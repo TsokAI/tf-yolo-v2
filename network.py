@@ -12,7 +12,8 @@ slim = tf.contrib.slim
 #     'endp': 'vgg_16',
 #     'ckpt': 'model/vgg_16.ckpt',
 #     'path': 'model/vgg_16.ckpt',
-#     'rptn': '^.*conv.*weights$'
+#     'rptn': '^.*conv.*weights$',
+#     'sdir': 'ckpt/vgg_16'
 # }
 
 from nets.mobilenet import forward
@@ -20,8 +21,13 @@ premodel = {
     'endp': 'MobilenetV1',
     'ckpt': 'model/mobilenet_v1_1.0_224.ckpt',
     'path': 'model/mobilenet_v1_1.0_224.ckpt.meta',
-    'rptn': '^.*Conv.*weights$'
+    'rptn': '^.*Conv.*weights$',
+    'sdir': 'ckpt/MobilenetV1'
 }
+
+ckpt_sdir = os.path.join(cfg.workspace, premodel['sdir'])
+if not os.path.exists(ckpt_sdir):
+    os.makedirs(ckpt_sdir)
 
 
 class Network:
@@ -102,7 +108,7 @@ class Network:
         try:
             print('trying to restore last checkpoint')
             last_ckpt_path = tf.train.latest_checkpoint(
-                checkpoint_dir=cfg.ckpt_dir)
+                checkpoint_dir=ckpt_sdir)
             self.saver.restore(self.sess, save_path=last_ckpt_path)
             print('restored checkpoint from:', last_ckpt_path)
         except:
@@ -159,7 +165,7 @@ class Network:
 
     def save_ckpt(self, step):
         self.saver.save(self.sess,
-                        save_path=os.path.join(cfg.ckpt_dir, cfg.model),
+                        save_path=os.path.join(ckpt_sdir, cfg.model),
                         global_step=self.global_step)
 
         print('saved checkpoint at step {}'.format(step))

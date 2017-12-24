@@ -14,9 +14,6 @@ model = 'detrac'
 data_dir = '/home/dattr/data/detrac'
 
 workspace = os.path.dirname(os.path.abspath(__file__))
-ckpt_dir = os.path.join(workspace, 'ckpt')
-if not os.path.exists(ckpt_dir):
-    os.makedirs(ckpt_dir)
 
 # todo: various shapes (inp_h != inp_w)
 # inp_size = [384, 416, 448, 480, 512]
