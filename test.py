@@ -11,10 +11,10 @@ from py_postprocess import postprocess, draw_targets
 
 slim = tf.contrib.slim
 
-tfcfg = tf.ConfigProto()
-tfcfg.graph_options.optimizer_options.global_jit_level = tf.OptimizerOptions.ON_1
+xla = tf.ConfigProto()
+xla.graph_options.optimizer_options.global_jit_level = tf.OptimizerOptions.ON_1
 
-net = Network(session=tf.Session(config=tfcfg),
+net = Network(session=tf.Session(config=xla),
               im_shape=cfg.inp_size, is_training=False)
 
 image_name = '01.jpg'

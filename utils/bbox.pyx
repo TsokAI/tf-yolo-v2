@@ -98,7 +98,7 @@ cdef bbox_transform_op(
     ----------
     bbox_pred: 4-dim float ndarray [bsize, HxW, num_anchors, 4] of (sig(tx), sig(ty), exp(th), exp(tw))
     anchors: [num_anchors, 2] of (ph, pw)
-    H, W: height, width of features map
+    H, W: height, width of feature map
     Returns
     -------
     box_pred: 4-dim float ndarray [bsize, HxW, num_anchors, 4] of bbox (x1, y1, x2, y2) rescaled to (0, 1)

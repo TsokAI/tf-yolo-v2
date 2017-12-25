@@ -24,10 +24,10 @@ print('epochs: {0} - batch: {1} - learn_rate: {2}'.format(args.epochs,
                                                           args.batch, args.lr))
 
 # tf configuration
-tfcfg = tf.ConfigProto()
-tfcfg.graph_options.optimizer_options.global_jit_level = tf.OptimizerOptions.ON_1
+xla = tf.ConfigProto()
+xla.graph_options.optimizer_options.global_jit_level = tf.OptimizerOptions.ON_1
 
-net = Network(session=tf.Session(config=tfcfg), im_shape=cfg.inp_size, is_training=True,
+net = Network(session=tf.Session(config=xla), im_shape=cfg.inp_size, is_training=True,
               lr=args.lr, adamop=True, pretrained=True)
 
 print('loading dataset')

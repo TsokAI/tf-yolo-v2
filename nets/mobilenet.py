@@ -3,6 +3,14 @@ import tensorflow as tf
 
 slim = tf.contrib.slim
 
+model = {
+    'endpoint': 'MobilenetV1',
+    'ckpt_path': 'model/mobilenet_v1_1.0_224.ckpt',
+    'valid_path': 'model/mobilenet_v1_1.0_224.ckpt.meta',
+    'restore': '^.*Conv.*weights$',
+    'save_dir': 'ckpt/MobilenetV1'
+}
+
 
 def depthsep_conv2d(inputs, num_outputs, kernel, stride, scope=None):
     net = slim.separable_conv2d(inputs, None, kernel,

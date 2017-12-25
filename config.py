@@ -3,24 +3,21 @@ from __future__ import absolute_import, division, print_function
 import os
 import numpy as np
 
-# yolo model name
-model = 'detrac'
+# feature extractor
+# vgg_16, MobilenetV1, 
+model = 'vgg_16'
 
-# working directories
-# pascal/voc
-# data_dir = '/home/dattr/data/pascal'
-
-# detrac
-data_dir = '/home/dattr/data/detrac'
-
+# working directories, create symlink to 'data' folder
+# contain 'annotation' and 'images' subfolder
 workspace = os.path.dirname(os.path.abspath(__file__))
+data_dir = os.path.join(workspace, 'data')
 
 # todo: various shapes (inp_h != inp_w)
 # inp_size = [384, 416, 448, 480, 512]
 inp_size = (416, 416)
 
 # object labels and class colors
-# pascal/voc labels
+# pascal labels
 # label_names = ['person',
 #                'bird', 'cat', 'cow', 'dog', 'horse', 'sheep',
 #                'aeroplane', 'bicycle', 'boat', 'bus', 'car', 'motorbike', 'train',
@@ -33,7 +30,7 @@ num_classes = len(label_names)
 label_colors = {}
 for label in label_names:
     label_colors[label] = (np.random.randint(
-        0, 128), np.random.randint(0, 128), np.random.randint(0, 128))
+        50, 128), np.random.randint(50, 128), np.random.randint(50, 128))
 
 # configuration
 iou_thresh = 0.7
