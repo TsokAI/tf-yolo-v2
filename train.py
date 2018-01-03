@@ -11,8 +11,9 @@ from blob import BlobLoader
 
 slim = tf.contrib.slim
 
-train_anno_dir = os.path.join(cfg.data_dir, 'annotation_sample')
-train_images_dir = os.path.join(cfg.data_dir, 'images')
+data_dir = os.path.join(os.getcwd(), 'data')
+train_anno_dir = os.path.join(data_dir, 'annotation')
+train_images_dir = os.path.join(data_dir, 'images')
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--epochs', type=int, default=20)

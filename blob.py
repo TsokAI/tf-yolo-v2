@@ -3,11 +3,13 @@ import os
 import numpy as np
 import cv2
 import xml.etree.cElementTree as ctree
-import config as cfg
+from config import label_names
 
 label2cls = {}
-for idx, label in enumerate(cfg.label_names):
+for idx, label in enumerate(label_names):
     label2cls[label] = idx
+
+data_dir = os.path.join(os.getcwd(), 'data')
 
 
 def prep_image(anno_dir, images_dir, xml, target_size):
@@ -25,6 +27,10 @@ def prep_image(anno_dir, images_dir, xml, target_size):
         classes.append(label2cls[box.find('name').text])
         bndbox = box.find('bndbox')
         # using numpy's axis (not pascal/voc)
+        # X-----------> y
+        # |
+        # |
+        # V x
         boxes.append([float(bndbox.find('ymin').text),
                       float(bndbox.find('xmin').text),
                       float(bndbox.find('ymax').text),
@@ -37,12 +43,11 @@ def prep_image(anno_dir, images_dir, xml, target_size):
 
     classes = np.array(classes, dtype=np.int8)
 
-    image = cv2.imread(os.path.join(cfg.data_dir, images_dir, image_name))
+    image = cv2.imread(os.path.join(data_dir, images_dir, image_name))
+    # image preprocessing
     # cv2 using BGR channels for imread, convert to RGB and normalize
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     image = cv2.resize(image, (target_size[1], target_size[0]))
-    # image -= [123.68, 116.78, 103.94]
-    image = image / 128.0 - 1
 
     # if np.random.randint(0, 2):  # randomly left-right flipping
     #     image = cv2.flip(image, 1)
@@ -55,7 +60,7 @@ class BlobLoader:
     def __init__(self, anno_dir, images_dir, batch_size, target_size):
         self.anno_dir = anno_dir
         self.images_dir = images_dir
-        self.anno = os.listdir(os.path.join(cfg.data_dir, anno_dir))
+        self.anno = os.listdir(os.path.join(data_dir, anno_dir))
         self.num_anno = len(self.anno)
         self.batch_size = batch_size
         self.target_size = target_size
