@@ -9,6 +9,8 @@ from tensorflow.python.pywrap_tensorflow import NewCheckpointReader
 
 slim = tf.contrib.slim
 
+model = 'MobilenetV1'
+
 
 def depthsep_conv2d(inputs, num_outputs, kernel, stride, scope=None):
     net = slim.separable_conv2d(inputs, None, kernel,
@@ -28,9 +30,11 @@ def forward(inputs, num_outputs, is_training=True, scope=None):
         with slim.arg_scope([slim.conv2d, slim.separable_conv2d],
                             normalizer_fn=slim.batch_norm):
             with slim.arg_scope([slim.batch_norm], is_training=is_training):
+                # root block
                 net = slim.conv2d(inputs, 32, [3, 3],
                                   stride=2, scope='Conv2d_0')
 
+                # separate blocks
                 net = depthsep_conv2d(net, 64, [3, 3],
                                       stride=1, scope='Conv2d_1')
                 net = depthsep_conv2d(net, 128, [3, 3],
@@ -58,6 +62,7 @@ def forward(inputs, num_outputs, is_training=True, scope=None):
                 net = depthsep_conv2d(net, 1024, [3, 3],
                                       stride=1, scope='Conv2d_13')
 
+                # logit block
                 net = slim.conv2d(net, num_outputs, [1, 1],
                                   activation_fn=None, normalizer_fn=None, scope='_logits_')
 
@@ -69,9 +74,10 @@ def restore(sess, global_vars):
     reader = NewCheckpointReader(os.path.join(
         os.getcwd(), 'model/mobilenet_v1_1.0_224.ckpt'))
 
+    # restore weights and batchnorm from conv layers
     restored_var_names = [name + ':0'
                           for name in reader.get_variable_to_dtype_map().keys()
-                          if re.match('^.*weights$', name)]
+                          if re.match('^.*weights$', name) or re.match('^.*BatchNorm', name)]
 
     restored_vars = [var for var in global_vars
                      if var.name in restored_var_names]

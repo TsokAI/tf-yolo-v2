@@ -9,9 +9,11 @@ from tensorflow.python.pywrap_tensorflow import NewCheckpointReader
 
 slim = tf.contrib.slim
 
+model = 'vgg_16'
+
 
 def forward(inputs, num_outputs, is_training=True, scope=None):
-    # modified (batchnorm + conv6) from slim pretrained model
+    # modified (add batchnorm) from slim pretrained model
     with tf.variable_scope(scope, 'vgg_16', [inputs], reuse=tf.AUTO_REUSE):
         with slim.arg_scope([slim.conv2d],
                             normalizer_fn=slim.batch_norm):
@@ -36,7 +38,7 @@ def forward(inputs, num_outputs, is_training=True, scope=None):
                                   [3, 3], scope='conv5')
                 net = slim.max_pool2d(net, [2, 2], scope='pool5')
 
-                net = slim.conv2d(net, 512, [3, 3], scope='conv6')
+                # logit block
                 net = slim.conv2d(net, num_outputs, [1, 1],
                                   activation_fn=None, normalizer_fn=None, scope='_logits_')
 
@@ -49,6 +51,7 @@ def restore(sess, global_vars):
     reader = NewCheckpointReader(
         os.path.join(os.getcwd(), 'model/vgg_16.ckpt'))
 
+    # no batchnorm from vgg_16 pretrained model
     restored_var_names = [name + ':0'
                           for name in reader.get_variable_to_dtype_map().keys()
                           if re.match('^.*weights$', name)]  # skip conv's biases

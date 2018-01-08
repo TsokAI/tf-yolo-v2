@@ -6,11 +6,14 @@
 # --------------------------------------------------------
 
 cimport cython
+from cython.parallel import prange, parallel
 import numpy as np
 cimport numpy as np
 
 DTYPE = np.float32
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
 cdef box_overlaps_op(
         np.ndarray[DTYPE_t, ndim=2] boxes,
         np.ndarray[DTYPE_t, ndim=2] query_boxes):
@@ -56,6 +59,49 @@ cdef box_overlaps_op(
                     overlaps[n, k] = inter_area / ua
     return overlaps
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef box_intersections_op(
+        np.ndarray[DTYPE_t, ndim=2] boxes,
+        np.ndarray[DTYPE_t, ndim=2] query_boxes):
+    """
+    Compute overlaps of boxes and query_boxes (divided by area of boxes)
+    ----------
+    Parameters
+    ----------
+    boxes: (N, 4) ndarray of float in order (x1, y1, x2, y2)
+    query_boxes: (K, 4) ndarray of float
+    Returns
+    -------
+    overlaps: (N, K) ndarray of overlap between boxes and query_boxes
+    """
+    cdef unsigned int N = boxes.shape[0]
+    cdef unsigned int K = query_boxes.shape[0]
+    cdef np.ndarray[DTYPE_t, ndim=2] overlaps = np.zeros((N, K), dtype=DTYPE)
+    cdef DTYPE_t ih, iw
+    cdef DTYPE_t box_area
+    cdef unsigned int n, k
+    for n in range(N):
+        box_area = (
+            (boxes[n, 2] - boxes[n, 0] + 1) *
+            (boxes[n, 3] - boxes[n, 1] + 1)
+        )
+        for k in range(K):
+            ih = (
+                min(boxes[n, 2], query_boxes[k, 2]) -
+                max(boxes[n, 0], query_boxes[k, 0]) + 1
+            )
+            if ih > 0:
+                iw = (
+                    min(boxes[n, 3], query_boxes[k, 3]) -
+                    max(boxes[n, 1], query_boxes[k, 1]) + 1
+                )
+                if iw > 0:
+                    overlaps[n, k] = (ih * iw) / box_area
+    return overlaps
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
 cdef anchor_overlaps_op(
         np.ndarray[DTYPE_t, ndim=2] anchors,
         np.ndarray[DTYPE_t, ndim=2] query_boxes):
@@ -87,12 +133,15 @@ cdef anchor_overlaps_op(
             overlaps[n, k] = inter_area / (anchor_area + boxh * boxw - inter_area)
     return overlaps
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
 cdef bbox_transform_op(
         np.ndarray[DTYPE_t, ndim=4] bbox_pred,
         np.ndarray[DTYPE_t, ndim=2] anchors, 
         int H, int W):
     """
     Transform predicted proposals to image bounding boxes, similar to bbox_transform_inv in faster-rcnn
+    cython parallel with 4 threads
     ----------
     Parameters
     ----------
@@ -109,19 +158,20 @@ cdef bbox_transform_op(
     cdef DTYPE_t cx, cy, bh, bw
     cdef unsigned int b, row, col, a, ind
     
-    for b in range(bsize):
-        for row in range(H):
-            for col in range(W):
-                ind = row * W + col
-                for a in range(num_anchors):
-                    cx = row + bbox_pred[b, ind, a, 0]
-                    cy = col + bbox_pred[b, ind, a, 1]
-                    bh = bbox_pred[b, ind, a, 2] * anchors[a, 0] * 0.5
-                    bw = bbox_pred[b, ind, a, 3] * anchors[a, 1] * 0.5
-                    box_pred[b, ind, a, 0] = (cx - bh) / H
-                    box_pred[b, ind, a, 1] = (cy - bw) / W
-                    box_pred[b, ind, a, 2] = (cx + bh) / H
-                    box_pred[b, ind, a, 3] = (cy + bw) / W
+    with nogil, parallel(num_threads=4):
+        for b in prange(bsize, schedule='dynamic'):
+            for row in range(H):
+                for col in range(W):
+                    ind = row * W + col
+                    for a in range(num_anchors):
+                        cx = bbox_pred[b, ind, a, 0] + row
+                        cy = bbox_pred[b, ind, a, 1] + col
+                        bh = anchors[a, 0] * bbox_pred[b, ind, a, 2] * 0.5
+                        bw = anchors[a, 1] * bbox_pred[b, ind, a, 3] * 0.5
+                        box_pred[b, ind, a, 0] = (cx - bh) / H
+                        box_pred[b, ind, a, 1] = (cy - bw) / W
+                        box_pred[b, ind, a, 2] = (cx + bh) / H
+                        box_pred[b, ind, a, 3] = (cy + bw) / W
 
     return box_pred
 
@@ -130,6 +180,12 @@ def box_overlaps(
         np.ndarray[DTYPE_t, ndim=2] query_boxes):
     
     return box_overlaps_op(boxes, query_boxes)
+
+def box_intersections(
+        np.ndarray[DTYPE_t, ndim=2] boxes,
+        np.ndarray[DTYPE_t, ndim=2] query_boxes):
+    
+    return box_intersections_op(boxes, query_boxes)
 
 def anchor_overlaps(
         np.ndarray[DTYPE_t, ndim=2] anchors,

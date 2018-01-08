@@ -9,17 +9,18 @@ slim = tf.contrib.slim
 
 _SUM = tf.losses.Reduction.SUM
 
-if cfg.model == 'vgg_16':
-    from nets.vgg import forward, restore, preprocess
-elif cfg.model == 'resnet_v2_50':
-    from nets.resnet import forward, restore, preprocess
-elif cfg.model == 'MobilenetV1':
-    from nets.mobilenet import forward, restore, preprocess
-else:
+# backbone convolution network definition
+if cfg.model == 'vgg':  # using vgg_16
+    from nets.vgg import model, forward, restore, preprocess
+elif cfg.model == 'resnet':  # using resnet_v2_50
+    from nets.resnet import model, forward, restore, preprocess
+elif cfg.model == 'mobilenet':  # using MobilenetV1
+    from nets.mobilenet import model, forward, restore, preprocess
+else:  # add new model in nets, skip restore, pretrained is False
     raise Exception('invalid model')
 
 
-class Network:
+class Network:  # computation graph
     def __init__(self, session, im_shape, is_training=True, lr=1e-3, adamop=True, pretrained=False):
         # tensorflow session
         self.sess = session
@@ -36,7 +37,7 @@ class Network:
         logits = forward(preprocessed_images,
                          num_outputs=cfg.num_anchors * (cfg.num_classes + 5),
                          is_training=is_training,
-                         scope=cfg.model)
+                         scope=model)
 
         ft_shape = logits.get_shape().as_list()[1:3]
 
@@ -46,6 +47,7 @@ class Network:
         bbox_pred = tf.concat([tf.sigmoid(logits[:, :, :, 0:2]), tf.exp(logits[:, :, :, 2:4])],
                               axis=3)
 
+        # slow operation, parallel with openmp
         self.box_pred = tf.py_func(bbox_transform,
                                    [bbox_pred, self.anchors_ph,
                                        ft_shape[0], ft_shape[1]],
@@ -69,7 +71,8 @@ class Network:
                                                                               self.boxes_ph, self.classes_ph, self.anchors_ph],
                                                                              [tf.float32] * 6, name='targets')
 
-            # network's losses, cross-entropy loss (or focal loss) on cls?
+            # network's losses, cross-entropy loss on cls?
+            # losses normalized with number of groundtruth boxes
             self.bbox_loss = tf.losses.mean_squared_error(labels=_bbox * _bbox_mask,
                                                           predictions=bbox_pred * _bbox_mask,
                                                           reduction=_SUM) / self.num_boxes_batch_ph
@@ -80,6 +83,7 @@ class Network:
                                                          predictions=self.cls_pred * _cls_mask,
                                                          reduction=_SUM) / self.num_boxes_batch_ph
 
+            # joint training with sum of losses
             self.total_loss = self.bbox_loss + self.iou_loss + self.cls_loss
 
             # network's optimizer
@@ -94,11 +98,11 @@ class Network:
                 self.optimizer = tf.train.MomentumOptimizer(learning_rate=lr, momentum=0.9, use_nesterov=True).minimize(
                     loss=self.total_loss, global_step=self.global_step)
 
-        self.saver = tf.train.Saver(max_to_keep=3)
+        self.saver = tf.train.Saver(max_to_keep=1)
 
-        self.load_ckpt(pretrained)
+        self.load_ckpt_or_init(pretrained)
 
-    def load_ckpt(self, pretrained):
+    def load_ckpt_or_init(self, pretrained=False):
         # restore model with ckpt/pretrain or init
         try:
             print('trying to restore last checkpoint')
@@ -109,8 +113,9 @@ class Network:
         except:
             print('init variables')
             if pretrained:  # using slim pretrained model
+                # restore weights, biases and batchnorm
                 restore(self.sess, tf.global_variables())
-            else:  # xavier random
+            else:  # xavier random init
                 self.sess.run(tf.global_variables_initializer())
 
     def train(self, batch_images, batch_boxes, batch_classes, anchors, num_boxes_batch):
@@ -127,7 +132,7 @@ class Network:
 
     def save_ckpt(self, step):
         self.saver.save(self.sess,
-                        save_path=os.path.join(ckpt_dir, cfg.model),
+                        save_path=os.path.join(ckpt_dir, model),
                         global_step=self.global_step)
 
         print('saved checkpoint at step {}'.format(step))

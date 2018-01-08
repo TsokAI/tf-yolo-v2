@@ -22,12 +22,6 @@ def clip_boxes(boxes, im_shape):
     return boxes
 
 
-def nms_detections(boxes_pred, scores, nms_thresh, force_cpu=False):
-    dets = np.hstack((boxes_pred, scores[:, np.newaxis])).astype(np.float32)
-
-    return nms(dets, nms_thresh, force_cpu)
-
-
 def postprocess(box_pred, iou_pred, cls_pred,
                 im_shape, thresh, force_cpu=False):
     # flatten logits' cells
@@ -55,7 +49,9 @@ def postprocess(box_pred, iou_pred, cls_pred,
         if len(inds) == 0:
             continue
 
-        keep = nms_detections(box_pred[inds], scores[inds], 0.45, force_cpu)
+        dets = np.hstack((box_pred[inds], scores[inds][:, np.newaxis]))
+
+        keep = nms(dets, 0.45, force_cpu)
         keep_inds[inds[keep]] = 1
 
     keep_inds = np.where(keep_inds > 0)[0]
@@ -71,7 +67,7 @@ def postprocess(box_pred, iou_pred, cls_pred,
 def draw_targets(image, box_pred, cls_inds, scores):
     for b in range(box_pred.shape[0]):
         box_cls = cls_inds[b]
-        if box_cls == 0:  # skip for others/background boxes
+        if box_cls == 0:  # skip for others boxes
             continue
 
         box_label = cfg.label_names[box_cls]

@@ -1,8 +1,10 @@
 # yolov2 with tensorflow
 
 ## dataset:
-change dataset directory in config.py, folder contain 'images' and 'annotation' subfolder
-  
+create symlink to 'data' from dataset location, 'data' folder contain 'images' and 'annotation' subfolder
+
+tf-slim pretrained model in 'model' folder
+
 annotation using pascal/voc xml format
 
 using default yolov2's anchor in 416x416, can be scaled to different size
@@ -16,19 +18,15 @@ python3 train.py --epochs NUM_EPOCHS --batch NUM_IMAGES --lr LEARN_RATE
 
 losses collection (step, bbox, iou, class, total) will be saved in logs/losses_collection.txt
 
-edit adamop to use AdamOptimizer instead of SGD with momentum (default) and pretrained to use VGG16 model from tf-slim instead of initialization from scratch
+edit adamop to use AdamOptimizer instead of SGD with momentum and pretrained to use VGG16, MobilenetV1, Resnet_v2_50 model from tf-slim instead of initialization from scratch
 
 ## validation - testing:
 
 ## demo:
 
 ## todo:
-multiscale images training
+evaluate model
 
-fixed out of GPU's memory while training, exhausted with tf.ConfigProto GPU options
+fast bbox_transform in network
 
-evaluate model and visualization with matplotlib
-
-using compute targets (groundtruth and mask) with cython to improve training speed
-
-using postprocess with cython to improve speed
+fast postprocess with nms

@@ -16,13 +16,13 @@ train_anno_dir = os.path.join(data_dir, 'annotation')
 train_images_dir = os.path.join(data_dir, 'images')
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--epochs', type=int, default=20)
-parser.add_argument('--batch', type=int, default=1)
+parser.add_argument('--num_epochs', type=int, default=20)
+parser.add_argument('--batch_size', type=int, default=1)
 parser.add_argument('--lr', type=float, default=1e-3)
 args = parser.parse_args()
 
-print('epochs: {0} - batch: {1} - learn_rate: {2}'.format(args.epochs,
-                                                          args.batch, args.lr))
+print('num_epochs: {0} - batch_size: {1} - learn_rate: {2}'.format(args.epochs,
+                                                                   args.batch, args.lr))
 
 # tf configuration
 xla = tf.ConfigProto()
@@ -34,7 +34,7 @@ net = Network(session=tf.Session(config=xla), im_shape=cfg.inp_size, is_training
 print('loading dataset')
 blob = BlobLoader(anno_dir=train_anno_dir,
                   images_dir=train_images_dir,
-                  batch_size=args.batch, target_size=cfg.inp_size)
+                  batch_size=args.batch_size, target_size=cfg.inp_size)
 
 anchors = np.round(cfg.anchors * cfg.inp_size / 416, 2)
 
@@ -46,7 +46,7 @@ step = 0
 train_t = 0
 
 print('start training')
-for epoch in range(1, args.epochs + 1):
+for epoch in range(1, args.num_epochs + 1):
     start_t = time.time()
 
     for batch_images, batch_boxes, batch_classes, num_boxes_batch in blob.next_batch():
@@ -74,6 +74,6 @@ for epoch in range(1, args.epochs + 1):
 
 print('training done - time: ' + str(timedelta(seconds=train_t)))
 
-# dumpt losses_collection to file
+# dumpt collections to files
 losses_collection = np.asarray(losses_collection, dtype=np.float32)
 np.savetxt('./logs/losses_collection.txt', losses_collection, fmt='%.6e')

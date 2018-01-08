@@ -3,9 +3,9 @@ from __future__ import absolute_import, division, print_function
 import os
 import numpy as np
 
-# model = 'vgg_16'
-model = 'resnet_v2_50'
-# model = 'MobilenetV1'
+# model = 'vgg'
+model = 'resnet'
+# model = 'mobilenet'
 
 # working directories, create symlink to 'data' folder
 # contain 'annotation' and 'images' subfolder
@@ -14,7 +14,7 @@ model = 'resnet_v2_50'
 inp_size = (416, 416)
 
 # object labels and class colors
-# pascal labels
+# pascal/voc labels
 # label_names = ['person',
 #                'bird', 'cat', 'cow', 'dog', 'horse', 'sheep',
 #                'aeroplane', 'bicycle', 'boat', 'bus', 'car', 'motorbike', 'train',

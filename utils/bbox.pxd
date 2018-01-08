@@ -9,6 +9,10 @@ cdef box_overlaps_op(
         np.ndarray[DTYPE_t, ndim=2] boxes,
         np.ndarray[DTYPE_t, ndim=2] query_boxes)
 
+cdef box_intersections_op(
+        np.ndarray[DTYPE_t, ndim=2] boxes,
+        np.ndarray[DTYPE_t, ndim=2] query_boxes)
+
 cdef anchor_overlaps_op(
         np.ndarray[DTYPE_t, ndim=2] anchors,
         np.ndarray[DTYPE_t, ndim=2] query_boxes)
