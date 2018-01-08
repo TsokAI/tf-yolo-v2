@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import numpy as np
-import cv2
-import config as cfg
+from config import num_classes, nms_thresh
 from nms_wrapper import nms
 from utils.bbox import bbox_transform
 
@@ -31,7 +30,7 @@ def postprocess(box_pred, iou_pred, cls_pred,
     box_pred = box_pred.astype(np.int)
 
     iou_pred = np.reshape(iou_pred, newshape=[-1])
-    cls_pred = np.reshape(cls_pred, newshape=[-1, cfg.num_classes])
+    cls_pred = np.reshape(cls_pred, newshape=[-1, num_classes])
 
     cls_inds = np.argmax(cls_pred, axis=1)
     scores = iou_pred * cls_pred[np.arange(cls_pred.shape[0]), cls_inds]
@@ -44,14 +43,14 @@ def postprocess(box_pred, iou_pred, cls_pred,
 
     # apply nms to remove overlap boxes
     keep_inds = np.zeros(len(box_pred), dtype=np.int)
-    for c in range(cfg.num_classes):
+    for c in range(num_classes):
         inds = np.where(cls_inds == c)[0]
         if len(inds) == 0:
             continue
 
         dets = np.hstack((box_pred[inds], scores[inds][:, np.newaxis]))
 
-        keep = nms(dets, 0.45, force_cpu)
+        keep = nms(dets, nms_thresh, force_cpu)
         keep_inds[inds[keep]] = 1
 
     keep_inds = np.where(keep_inds > 0)[0]
@@ -62,21 +61,3 @@ def postprocess(box_pred, iou_pred, cls_pred,
     box_pred = clip_boxes(box_pred, im_shape)
 
     return box_pred, cls_inds, scores
-
-
-def draw_targets(image, box_pred, cls_inds, scores):
-    for b in range(box_pred.shape[0]):
-        box_cls = cls_inds[b]
-        if box_cls == 0:  # skip for others boxes
-            continue
-
-        box_label = cfg.label_names[box_cls]
-        box_color = cfg.label_colors[box_label]
-        p1 = (box_pred[b, 1], box_pred[b, 0])
-        p2 = (box_pred[b, 3], box_pred[b, 2])
-
-        cv2.rectangle(image, p1, p2, box_color, 2)
-        cv2.putText(image, '{}_{:.3f}'.format(
-            box_label, scores[b]), p1, cv2.FONT_HERSHEY_SIMPLEX, 0.5, box_color)
-
-    return image

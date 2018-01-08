@@ -14,7 +14,7 @@ using numpy's axis (not pascal/voc's axis): (ymin,xmin) = (xmin,ymin) and (ymax,
 
 network using VGG16 pretrained model (removed fc layers) from tf-slim with adding 2 conv layers (conv6, logits). vgg_16.ckpt put in model/
 
-python3 train.py --epochs NUM_EPOCHS --batch NUM_IMAGES --lr LEARN_RATE
+python3 train.py --num_epochs NUM_EPOCHS --batch_size NUM_IMAGES --learn_rate LEARN_RATE
 
 losses collection (step, bbox, iou, class, total) will be saved in logs/losses_collection.txt
 

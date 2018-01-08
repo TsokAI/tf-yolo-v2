@@ -114,3 +114,26 @@ class BlobLoader:
             # complete epoch
             if self.start_idx == 0:
                 break
+
+
+if __name__ == '__main__':  # test blob working
+    data_dir = os.path.join(os.getcwd(), 'data')
+    blob = BlobLoader(anno_dir=os.path.join(data_dir, 'annotation'),
+                      images_dir=os.path.join(data_dir, 'images'),
+                      batch_size=6, target_size=(416, 416))
+
+    for batch_images, batch_boxes, batch_classes, _ in blob.next_batch():
+        for b in range(len(batch_images)):
+            image = batch_images[b].astype(np.uint8)
+            boxes_inds = np.where(batch_classes[b] >= 0)[0]
+
+            print(boxes_inds)
+
+            for box in batch_boxes[b][boxes_inds]:
+                cv2.rectangle(image, (box[1], box[0]),
+                            (box[3], box[2]), (0, 0, 255), 1)
+
+            cv2.imshow('test_blob', image)
+            cv2.waitKey(0)
+
+        break

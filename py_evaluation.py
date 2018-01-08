@@ -1,19 +1,24 @@
 # https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/evaluation_protocols.md
 from __future__ import absolute_import, division, print_function
 import numpy as np
-import config as cfg
+from config import num_classes
 from utils.bbox import box_overlaps, box_intersections
 
 
-def evaluate(pred_boxes, pred_classes, gt_boxes, gt_classes, thresh=0.5):
-    """Compute avg_iou, precision, recall
+def evaluate_image(pred_boxes, pred_classes, gt_boxes, gt_classes, thresh=0.5):
+    """Compute avg_iou, precision, recall on image
     """
     mean_iou = 0
     precision = 0
     recall = 0
-    for c in range(cfg.num_classes):
+
+    for c in range(num_classes):
         gt_inds_c = np.where(gt_classes == c)[0]
         pred_inds_c = np.where(pred_classes == c)[0]
+
+        if len(gt_inds_c) == 0 or len(pred_inds_c) == 0:
+            continue
+
         gt_boxes_c = gt_boxes[gt_inds_c]
         pred_boxes_c = pred_boxes[pred_inds_c]
 
@@ -38,4 +43,4 @@ def evaluate(pred_boxes, pred_classes, gt_boxes, gt_classes, thresh=0.5):
         precision += true_pos / (true_pos + false_pos)
         recall += true_pos / (true_pos + false_neg)
 
-    return mean_iou / cfg.num_classes, precision / cfg.num_classes, recall / cfg.num_classes
+    return mean_iou / num_classes, precision / num_classes, recall / num_classes

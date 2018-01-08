@@ -18,18 +18,18 @@ train_images_dir = os.path.join(data_dir, 'images')
 parser = argparse.ArgumentParser()
 parser.add_argument('--num_epochs', type=int, default=20)
 parser.add_argument('--batch_size', type=int, default=1)
-parser.add_argument('--lr', type=float, default=1e-3)
+parser.add_argument('--learn_rate', type=float, default=1e-3)
 args = parser.parse_args()
 
-print('num_epochs: {0} - batch_size: {1} - learn_rate: {2}'.format(args.epochs,
-                                                                   args.batch, args.lr))
+print('num_epochs: {0} - batch_size: {1} - learn_rate: {2}'.format(
+    args.num_epochs, args.batch_size, args.learn_rate))
 
 # tf configuration
 xla = tf.ConfigProto()
 xla.graph_options.optimizer_options.global_jit_level = tf.OptimizerOptions.ON_1
 
 net = Network(session=tf.Session(config=xla), im_shape=cfg.inp_size, is_training=True,
-              lr=args.lr, adamop=True, pretrained=True)
+              lr=args.learn_rate, adamop=True, pretrained=True)
 
 print('loading dataset')
 blob = BlobLoader(anno_dir=train_anno_dir,
@@ -69,7 +69,7 @@ for epoch in range(1, args.num_epochs + 1):
     print('epoch: {0:03} - time: '.format(epoch) +
           str(timedelta(seconds=time_dif)))
 
-    if epoch % 5 == 0 or epoch == args.epochs:
+    if epoch % 5 == 0 or epoch == args.num_epochs:
         net.save_ckpt(step)
 
 print('training done - time: ' + str(timedelta(seconds=train_t)))
