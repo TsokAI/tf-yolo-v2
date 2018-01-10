@@ -9,8 +9,6 @@ label2cls = {}
 for idx, label in enumerate(label_names):
     label2cls[label] = idx
 
-data_dir = os.path.join(os.getcwd(), 'data')
-
 
 def prep_image(anno_dir, images_dir, xml, target_size):
     # image in shape of [height, width, num_channels]
@@ -43,7 +41,7 @@ def prep_image(anno_dir, images_dir, xml, target_size):
 
     classes = np.array(classes, dtype=np.int8)
 
-    image = cv2.imread(os.path.join(data_dir, images_dir, image_name))
+    image = cv2.imread(os.path.join(images_dir, image_name))
     # image preprocessing
     # cv2 using BGR channels for imread, convert to RGB and normalize
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -60,7 +58,7 @@ class BlobLoader:
     def __init__(self, anno_dir, images_dir, batch_size, target_size):
         self.anno_dir = anno_dir
         self.images_dir = images_dir
-        self.anno = os.listdir(os.path.join(data_dir, anno_dir))
+        self.anno = os.listdir(anno_dir)
         self.num_anno = len(self.anno)
         self.batch_size = batch_size
         self.target_size = target_size
@@ -131,7 +129,7 @@ if __name__ == '__main__':  # test blob working
 
             for box in batch_boxes[b][boxes_inds]:
                 cv2.rectangle(image, (box[1], box[0]),
-                            (box[3], box[2]), (0, 0, 255), 1)
+                              (box[3], box[2]), (0, 0, 255), 1)
 
             cv2.imshow('test_blob', image)
             cv2.waitKey(0)

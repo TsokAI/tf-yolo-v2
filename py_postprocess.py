@@ -50,7 +50,8 @@ def postprocess(box_pred, iou_pred, cls_pred,
 
         dets = np.hstack((box_pred[inds], scores[inds][:, np.newaxis]))
 
-        keep = nms(dets, nms_thresh, force_cpu)
+        keep = nms(np.ascontiguousarray(dets, dtype=np.float32),
+                   nms_thresh, force_cpu)
         keep_inds[inds[keep]] = 1
 
     keep_inds = np.where(keep_inds > 0)[0]

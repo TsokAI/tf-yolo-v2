@@ -19,6 +19,11 @@ elif cfg.model == 'mobilenet':  # using MobilenetV1
 else:  # add new model in nets, skip restore, pretrained is False
     raise Exception('invalid model')
 
+# checkpoint directory
+ckpt_dir = os.path.join(os.getcwd(), 'ckpt', model)
+if not os.path.exists(ckpt_dir):
+    os.makedirs(ckpt_dir)
+
 
 class Network:  # computation graph
     def __init__(self, session, im_shape, is_training=True, lr=1e-3, adamop=True, pretrained=False):

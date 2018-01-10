@@ -126,6 +126,12 @@ ext_modules = [
         include_dirs=[numpy_include, '.']
     ),
     # Extension(
+    #     'utils.opencv',
+    #     ['utils/opencv.pyx'],
+    #     extra_compile_args={'gcc': ["-Wno-cpp", "-Wno-unused-function"]},
+    #     include_dirs=[numpy_include, '.']
+    # ),
+    # Extension(
     #     'compute_targets',
     #     ['compute_targets.pyx'],
     #     extra_compile_args={'gcc': ["-Wno-cpp", "-Wno-unused-function"]},
@@ -138,8 +144,8 @@ ext_modules = [
     #     include_dirs=[numpy_include, '.']
     # ),
     # Extension(
-    #     'evaluate',
-    #     ['evaluate.pyx'],
+    #     'evaluation',
+    #     ['evaluation.pyx'],
     #     extra_compile_args={'gcc': ["-Wno-cpp", "-Wno-unused-function"]},
     #     include_dirs=[numpy_include, '.']
     # ),
