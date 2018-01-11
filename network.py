@@ -78,29 +78,44 @@ class Network:  # computation graph
 
             # network's losses, cross-entropy loss on cls?
             # losses normalized with number of groundtruth boxes
-            self.bbox_loss = tf.losses.mean_squared_error(labels=_bbox * _bbox_mask,
-                                                          predictions=bbox_pred * _bbox_mask,
-                                                          reduction=_SUM) / self.num_boxes_batch_ph
+            self.box_x_loss = tf.losses.mean_squared_error(labels=_bbox[:, :, 0] * _bbox_mask,
+                                                           predictions=bbox_pred[:,
+                                                                                 :, 0] * _bbox_mask,
+                                                           reduction=_SUM)
+            self.box_y_loss = tf.losses.mean_squared_error(labels=_bbox[:, :, 1] * _bbox_mask,
+                                                           predictions=bbox_pred[:,
+                                                                                 :, 1] * _bbox_mask,
+                                                           reduction=_SUM)
+            self.box_h_loss = tf.losses.mean_squared_error(labels=_bbox[:, :, 2] * _bbox_mask,
+                                                           predictions=bbox_pred[:,
+                                                                                 :, 2] * _bbox_mask,
+                                                           reduction=_SUM)
+            self.box_w_loss = tf.losses.mean_squared_error(labels=_bbox[:, :, 3] * _bbox_mask,
+                                                           predictions=bbox_pred[:,
+                                                                                 :, 3] * _bbox_mask,
+                                                           reduction=_SUM)
+
             self.iou_loss = tf.losses.mean_squared_error(labels=_iou * _iou_mask,
                                                          predictions=self.iou_pred * _iou_mask,
-                                                         reduction=_SUM) / self.num_boxes_batch_ph
+                                                         reduction=_SUM)
+
             self.cls_loss = tf.losses.mean_squared_error(labels=_cls * _cls_mask,
                                                          predictions=self.cls_pred * _cls_mask,
-                                                         reduction=_SUM) / self.num_boxes_batch_ph
+                                                         reduction=_SUM)
 
             # joint training with sum of losses
-            self.total_loss = self.bbox_loss + self.iou_loss + self.cls_loss
+            self.total_loss = (self.box_x_loss + self.box_y_loss + self.box_h_loss + self.box_w_loss +
+                               self.iou_loss + self.cls_loss) / self.num_boxes_batch_ph
 
             # network's optimizer
             self.global_step = tf.Variable(
                 initial_value=0, trainable=False, name='global_step')
 
-            if adamop:  # using Adam, better with small batch_size
+            if adamop:  # using Adam
                 self.optimizer = tf.train.AdamOptimizer(learning_rate=lr).minimize(
                     loss=self.total_loss, global_step=self.global_step)
-            else:  # using SGD_momentum + nesterov
-                # poor performance with small batch_size (<=10)
-                self.optimizer = tf.train.MomentumOptimizer(learning_rate=lr, momentum=0.9, use_nesterov=True).minimize(
+            else:  # using SGD_momentum
+                self.optimizer = tf.train.MomentumOptimizer(learning_rate=lr, momentum=0.9).minimize(
                     loss=self.total_loss, global_step=self.global_step)
 
         self.saver = tf.train.Saver(max_to_keep=1)
@@ -124,16 +139,14 @@ class Network:  # computation graph
                 self.sess.run(tf.global_variables_initializer())
 
     def train(self, batch_images, batch_boxes, batch_classes, anchors, num_boxes_batch):
-        step, bbox_loss, iou_loss, cls_loss, _ = self.sess.run([self.global_step,
-                                                                self.bbox_loss, self.iou_loss, self.cls_loss,
-                                                                self.optimizer],
-                                                               feed_dict={self.images_ph: batch_images,
-                                                                          self.boxes_ph: batch_boxes,
-                                                                          self.classes_ph: batch_classes,
-                                                                          self.anchors_ph: anchors,
-                                                                          self.num_boxes_batch_ph: num_boxes_batch})
+        step, total_loss, _ = self.sess.run([self.global_step, self.total_loss, self.optimizer],
+                                            feed_dict={self.images_ph: batch_images,
+                                                       self.boxes_ph: batch_boxes,
+                                                       self.classes_ph: batch_classes,
+                                                       self.anchors_ph: anchors,
+                                                       self.num_boxes_batch_ph: num_boxes_batch})
 
-        return step, bbox_loss, iou_loss, cls_loss
+        return step, total_loss
 
     def save_ckpt(self, step):
         self.saver.save(self.sess,

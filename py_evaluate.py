@@ -24,18 +24,18 @@ def evaluate_image(pred_boxes, pred_classes, gt_boxes, gt_classes, thresh=0.5):
 
         # 3 labels: true_positives, ignored, false_positives
         # true_positives, largest IoU per gt_boxes is greater than thresh (default=0.5)
-        overlaps = box_overlaps(pred_boxes_c, gt_boxes_c)
+        overlaps = np.max(box_overlaps(pred_boxes_c, gt_boxes_c), axis=0)
 
-        true_pos = sum(np.max(overlaps, axis=0) > thresh)
-        mean_iou += np.mean(overlaps)
+        true_pos = sum(overlaps > thresh)
+        avg_iou += np.mean(overlaps)
 
         # ignored (group-of groundtruth box), area of intersection divided by
         # area of prediction is greater than 0.5
         # false_positives, neither true_positives nor ignored
-        overlaps = box_intersections(pred_boxes_c, gt_boxes_c) > 0.5
+        intersections = box_intersections(pred_boxes_c, gt_boxes_c) > 0.5
 
-        false_neg = len(np.where(np.sum(overlaps, axis=0) == 0)[0])
-        false_pos = len(np.where(np.sum(overlaps, axis=1) == 0)[0])
+        false_neg = len(np.where(np.sum(intersections, axis=0) == 0)[0])
+        false_pos = len(np.where(np.sum(intersections, axis=1) == 0)[0])
 
         # precision = num-of-true_positives / (num-of-true_positives + num-of-false_positives)
         # recall = num-of-true_positives / num-of-non-group-of-boxes
@@ -43,4 +43,4 @@ def evaluate_image(pred_boxes, pred_classes, gt_boxes, gt_classes, thresh=0.5):
         precision += true_pos / (true_pos + false_pos)
         recall += true_pos / (true_pos + false_neg)
 
-    return mean_iou / num_classes, precision / num_classes, recall / num_classes
+    return avg_iou / num_classes, precision / num_classes, recall / num_classes

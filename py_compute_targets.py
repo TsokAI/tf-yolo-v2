@@ -58,7 +58,7 @@ def compute_targets(im_shape, ft_shape,
     anchor_inds = np.argmax(anchor_ious, axis=0)
 
     for i, cell_ind in enumerate(cell_inds):
-        # for each gt_boxes
+        # for each groundtruth box
         if cell_ind >= hw or cell_ind < 0:
             continue
         a = anchor_inds[i]
@@ -66,10 +66,12 @@ def compute_targets(im_shape, ft_shape,
         _cls[cell_ind, a, gt_classes[i]] = 1
         _cls_mask[cell_ind, a, :] = cfg.cls_scale
 
-        _iou[cell_ind, a, :] = box_ious[cell_ind, a, i]
+        _iou_truth = box_ious[cell_ind, a, i]
+        _iou[cell_ind, a, :] = _iou_truth
         _iou_mask[cell_ind, a, :] = cfg.object_scale * \
-            (1 - iou_pred[cell_ind, a, :])
+            (_iou_truth - iou_pred[cell_ind, a, :])
 
+        # _bbox is [sig(tx), sig(ty), exp(th), exp(tw)] of groundtruth box
         target_boxes[i, 2:4] /= anchors[a]
         _bbox[cell_ind, a, :] = target_boxes[i]
         _bbox_mask[cell_ind, a, :] = cfg.box_scale

@@ -144,8 +144,8 @@ ext_modules = [
     #     include_dirs=[numpy_include, '.']
     # ),
     # Extension(
-    #     'evaluation',
-    #     ['evaluation.pyx'],
+    #     'evaluate',
+    #     ['evaluate.pyx'],
     #     extra_compile_args={'gcc': ["-Wno-cpp", "-Wno-unused-function"]},
     #     include_dirs=[numpy_include, '.']
     # ),

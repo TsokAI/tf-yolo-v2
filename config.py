@@ -25,7 +25,7 @@ model = 'resnet'
 inp_size = (416, 416)
 
 # yolov2 configuration
-iou_thresh = 0.7
+iou_thresh = 0.6
 cls_scale = 1
 object_scale = 5
 noobject_scale = 1
@@ -34,10 +34,10 @@ box_scale = 1
 nms_thresh = 0.45
 
 # anchors with (height, width) order
-anchors = np.array([(1.19, 1.08),
-                    (4.41, 3.42),
-                    (11.38, 6.63),
-                    (5.11, 9.42),
-                    (10.52, 16.62)], dtype=np.float32)
+default_anchors = np.array([(1.19, 1.08),
+                            (4.41, 3.42),
+                            (11.38, 6.63),
+                            (5.11, 9.42),
+                            (10.52, 16.62)], dtype=np.float32)
 
 num_anchors = len(anchors)
