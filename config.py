@@ -40,4 +40,5 @@ default_anchors = np.array([(1.19, 1.08),
                             (5.11, 9.42),
                             (10.52, 16.62)], dtype=np.float32)
 
-num_anchors = len(anchors)
+# num_anchors = len(default_anchors)
+num_anchors = 5

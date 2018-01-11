@@ -8,6 +8,7 @@ import tensorflow as tf
 import config as cfg
 from network import Network
 from py_postprocess import postprocess
+from bounding_boxes import draw_targets
 
 slim = tf.contrib.slim
 
@@ -33,3 +34,8 @@ box_pred, cls_inds, scores = postprocess(box_pred[0], iou_pred[0], cls_pred[0],
                                          image.shape[0:2], thresh=0.5, force_cpu=False)
 
 print('usage time: ' + str(timedelta(seconds=np.round(time.time() - start_t))))
+
+image = draw_targets(image, box_pred, cls_inds, scores)
+
+cv2.imshow(image_name, image)
+cv2.waitKey(0)
