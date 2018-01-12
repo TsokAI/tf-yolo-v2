@@ -52,6 +52,8 @@ class Network:  # computation graph
         bbox_pred = tf.concat([tf.sigmoid(logits[:, :, :, 0:2]), tf.exp(logits[:, :, :, 2:4])],
                               axis=3)
 
+        clss_pred = logits[:, :, :, 5:]
+
         # slow operation, parallel with openmp
         self.box_pred = tf.py_func(bbox_transform,
                                    [bbox_pred, self.anchors_ph,
@@ -60,7 +62,7 @@ class Network:  # computation graph
 
         self.iou_pred = tf.sigmoid(logits[:, :, :, 4:5])
 
-        self.cls_pred = tf.nn.softmax(logits[:, :, :, 5:])
+        self.cls_pred = tf.nn.softmax(clss_pred)
 
         if is_training:
             # network's placeholders in training
@@ -76,36 +78,30 @@ class Network:  # computation graph
                                                                               self.boxes_ph, self.classes_ph, self.anchors_ph],
                                                                              [tf.float32] * 6, name='targets')
 
-            # network's losses, cross-entropy loss on cls?
+            # network's losses
             # losses normalized with number of groundtruth boxes
-            self.box_x_loss = tf.losses.mean_squared_error(labels=_bbox[:, :, 0:1] * _bbox_mask,
-                                                           predictions=bbox_pred[:,
-                                                                                 :, 0:1] * _bbox_mask,
-                                                           reduction=_SUM)
-            self.box_y_loss = tf.losses.mean_squared_error(labels=_bbox[:, :, 1:2] * _bbox_mask,
-                                                           predictions=bbox_pred[:,
-                                                                                 :, 1:2] * _bbox_mask,
-                                                           reduction=_SUM)
-            self.box_h_loss = tf.losses.mean_squared_error(labels=_bbox[:, :, 2:3] * _bbox_mask,
-                                                           predictions=bbox_pred[:,
-                                                                                 :, 2:3] * _bbox_mask,
-                                                           reduction=_SUM)
-            self.box_w_loss = tf.losses.mean_squared_error(labels=_bbox[:, :, 3:4] * _bbox_mask,
-                                                           predictions=bbox_pred[:,
-                                                                                 :, 3:4] * _bbox_mask,
-                                                           reduction=_SUM)
+            self.bbox_loss = tf.losses.mean_squared_error(labels=_bbox * _bbox_mask,
+                                                          predictions=bbox_pred * _bbox_mask,
+                                                          reduction=_SUM) / self.num_boxes_batch_ph
 
             self.iou_loss = tf.losses.mean_squared_error(labels=_iou * _iou_mask,
                                                          predictions=self.iou_pred * _iou_mask,
-                                                         reduction=_SUM)
+                                                         reduction=_SUM) / self.num_boxes_batch_ph
 
-            self.cls_loss = tf.losses.mean_squared_error(labels=_cls * _cls_mask,
-                                                         predictions=self.cls_pred * _cls_mask,
-                                                         reduction=_SUM)
+            # self.cls_loss = tf.losses.mean_squared_error(labels=_cls * _cls_mask,
+            #                                              predictions=self.cls_pred * _cls_mask,
+            #                                              reduction=_SUM) / self.num_boxes_batch_ph
+
+            clss_pred = tf.reshape(clss_pred, shape=[-1, cfg.num_classes])
+            _cls = tf.reshape(_cls, shape=[-1, cfg.num_classes])
+            _cls_mask = tf.reshape(_cls_mask, shape=[-1, 1])
+
+            self.cls_loss = tf.losses.softmax_cross_entropy(onehot_labels=_cls * _cls_mask,
+                                                            logits=clss_pred * _cls_mask,
+                                                            reduction=_SUM) / self.num_boxes_batch_ph
 
             # joint training with sum of losses
-            self.total_loss = (self.box_x_loss + self.box_y_loss + self.box_h_loss + self.box_w_loss +
-                               self.iou_loss + self.cls_loss) / self.num_boxes_batch_ph
+            self.total_loss = self.bbox_loss + self.iou_loss + self.cls_loss
 
             # network's optimizer
             self.global_step = tf.Variable(
@@ -139,14 +135,16 @@ class Network:  # computation graph
                 self.sess.run(tf.global_variables_initializer())
 
     def train(self, batch_images, batch_boxes, batch_classes, anchors, num_boxes_batch):
-        step, total_loss, _ = self.sess.run([self.global_step, self.total_loss, self.optimizer],
-                                            feed_dict={self.images_ph: batch_images,
-                                                       self.boxes_ph: batch_boxes,
-                                                       self.classes_ph: batch_classes,
-                                                       self.anchors_ph: anchors,
-                                                       self.num_boxes_batch_ph: num_boxes_batch})
+        step, bbox_loss, iou_loss, cls_loss, total_loss, _ = self.sess.run([self.global_step,
+                                                                            self.bbox_loss, self.iou_loss, self.cls_loss, self.total_loss,
+                                                                            self.optimizer],
+                                                                           feed_dict={self.images_ph: batch_images,
+                                                                                      self.boxes_ph: batch_boxes,
+                                                                                      self.classes_ph: batch_classes,
+                                                                                      self.anchors_ph: anchors,
+                                                                                      self.num_boxes_batch_ph: num_boxes_batch})
 
-        return step, total_loss
+        return step, bbox_loss, iou_loss, cls_loss, total_loss
 
     def save_ckpt(self, step):
         self.saver.save(self.sess,

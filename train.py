@@ -12,8 +12,8 @@ from blob import BlobLoader
 slim = tf.contrib.slim
 
 data_dir = os.path.join(os.getcwd(), 'data')
-anno_dir = os.path.join(data_dir, 'annotation')
-images_dir = os.path.join(data_dir, 'images')
+anno_dir = os.path.join(data_dir, 'VOCtrainval_0712a')
+images_dir = os.path.join(data_dir, 'VOCtrainval_0712i')
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--num_epochs', type=int, default=20)
@@ -47,12 +47,12 @@ for epoch in range(1, args.num_epochs + 1):
 
     for batch_images, batch_boxes, batch_classes, num_boxes_batch in blob.next_batch():
 
-        step, total_loss = net.train(batch_images, batch_boxes, batch_classes,
-                                     anchors, num_boxes_batch)
+        step, bbox_loss, iou_loss, cls_loss, total_loss = net.train(batch_images, batch_boxes, batch_classes,
+                                                                    anchors, num_boxes_batch)
 
         if step % 100 == 0:
-            print('epoch: {0:03} - step: {1:07} - total_loss: {2}'
-                  .format(epoch, step, total_loss))
+            print('epoch: {0:03} - step: {1:07} - bbox_loss: {2} - iou_loss: {3} - cls_loss: {4} - total_loss: {5}'
+                  .format(epoch, step, bbox_loss, iou_loss, cls_loss, total_loss))
 
     time_dif = np.round(time.time() - start_t)
     train_t += time_dif

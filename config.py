@@ -18,8 +18,8 @@ label_names = ['aeroplane', 'bicycle', 'bird', 'boat', 'bottle',
 num_classes = len(label_names)
 
 # model = 'vgg'
-model = 'resnet'
-# model = 'mobilenet'
+# model = 'resnet'
+model = 'mobilenet'
 
 # inp_size = [384, 416, 448, 480, 512]
 inp_size = (416, 416)

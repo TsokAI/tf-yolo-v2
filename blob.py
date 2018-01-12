@@ -59,7 +59,8 @@ class BlobLoader:
     def __init__(self, anno_dir, images_dir, batch_size, target_size):
         self.anno_dir = anno_dir
         self.images_dir = images_dir
-        self.anno = os.listdir(anno_dir)
+        
+        self.anno = os.listdir(self.anno_dir)
         self.num_anno = len(self.anno)
         self.batch_size = batch_size
         self.target_size = target_size
