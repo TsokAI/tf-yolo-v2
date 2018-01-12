@@ -14,6 +14,8 @@ assert sizeof(int) == sizeof(np.int32_t)
 cdef extern from "gpu_nms.hpp":
     void _nms(np.int32_t*, int*, np.float32_t*, int, int, float, int)
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
 cdef gpu_nms_op(np.ndarray[np.float32_t, ndim=2] dets, np.float thresh,
             np.int32_t device_id=0):
     cdef int boxes_num = dets.shape[0]

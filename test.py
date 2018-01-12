@@ -47,8 +47,8 @@ for batch_images, batch_boxes, batch_classes, _ in blob.next_batch():
         gt_boxes_b = batch_boxes[b][gt_box_inds_b]
         gt_classes_b = batch_classes[b][gt_box_inds_b]
 
-        avg_iou_b, precision_b, recall_b = evaluate_image(pred_boxes=box_pred_b,
-                                                          pred_classes=cls_inds_b,
+        avg_iou_b, precision_b, recall_b = evaluate_image(box_pred=box_pred_b,
+                                                          cls_pred=cls_inds_b,
                                                           gt_boxes=gt_boxes_b,
                                                           gt_classes=gt_classes_b,
                                                           thresh=0.5)

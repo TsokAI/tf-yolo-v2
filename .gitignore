@@ -1,9 +1,8 @@
 *.so
 *.txt
-.vscode/
-__pycache__/
-.ipynb_checkpoints/
-logs/
-ckpt/
+.vscode
+__pycache__
+logs
+ckpt
 model
 data

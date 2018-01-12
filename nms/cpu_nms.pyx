@@ -15,6 +15,8 @@ cdef inline np.float32_t max(np.float32_t a, np.float32_t b):
 cdef inline np.float32_t min(np.float32_t a, np.float32_t b):
     return a if a <= b else b
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
 cdef cpu_nms_op(np.ndarray[np.float32_t, ndim=2] dets, np.float thresh):
     cdef np.ndarray[np.float32_t, ndim=1] x1 = dets[:, 0]
     cdef np.ndarray[np.float32_t, ndim=1] y1 = dets[:, 1]

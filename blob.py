@@ -14,6 +14,7 @@ def prep_image(anno_dir, images_dir, xml, target_size):
     # image in shape of [height, width, num_channels]
     # boxes in shape of [num_gt_boxes, (xmin, ymin, xmax, ymax)], scaled in target_size
     # classes in shape of [num_gt_boxes, (cls)]
+    # skip truncated, difficult in xml
     root = ctree.parse(os.path.join(anno_dir, xml)).getroot()
     image_name = root.find('filename').text
     image_size = root.find('size')
@@ -44,8 +45,8 @@ def prep_image(anno_dir, images_dir, xml, target_size):
     image = cv2.imread(os.path.join(images_dir, image_name))
     # image preprocessing
     # cv2 using BGR channels for imread, convert to RGB and normalize
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     image = cv2.resize(image, (target_size[1], target_size[0]))
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
     # if np.random.randint(0, 2):  # randomly left-right flipping
     #     image = cv2.flip(image, 1)

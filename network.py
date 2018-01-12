@@ -78,21 +78,21 @@ class Network:  # computation graph
 
             # network's losses, cross-entropy loss on cls?
             # losses normalized with number of groundtruth boxes
-            self.box_x_loss = tf.losses.mean_squared_error(labels=_bbox[:, :, 0] * _bbox_mask,
+            self.box_x_loss = tf.losses.mean_squared_error(labels=_bbox[:, :, 0:1] * _bbox_mask,
                                                            predictions=bbox_pred[:,
-                                                                                 :, 0] * _bbox_mask,
+                                                                                 :, 0:1] * _bbox_mask,
                                                            reduction=_SUM)
-            self.box_y_loss = tf.losses.mean_squared_error(labels=_bbox[:, :, 1] * _bbox_mask,
+            self.box_y_loss = tf.losses.mean_squared_error(labels=_bbox[:, :, 1:2] * _bbox_mask,
                                                            predictions=bbox_pred[:,
-                                                                                 :, 1] * _bbox_mask,
+                                                                                 :, 1:2] * _bbox_mask,
                                                            reduction=_SUM)
-            self.box_h_loss = tf.losses.mean_squared_error(labels=_bbox[:, :, 2] * _bbox_mask,
+            self.box_h_loss = tf.losses.mean_squared_error(labels=_bbox[:, :, 2:3] * _bbox_mask,
                                                            predictions=bbox_pred[:,
-                                                                                 :, 2] * _bbox_mask,
+                                                                                 :, 2:3] * _bbox_mask,
                                                            reduction=_SUM)
-            self.box_w_loss = tf.losses.mean_squared_error(labels=_bbox[:, :, 3] * _bbox_mask,
+            self.box_w_loss = tf.losses.mean_squared_error(labels=_bbox[:, :, 3:4] * _bbox_mask,
                                                            predictions=bbox_pred[:,
-                                                                                 :, 3] * _bbox_mask,
+                                                                                 :, 3:4] * _bbox_mask,
                                                            reduction=_SUM)
 
             self.iou_loss = tf.losses.mean_squared_error(labels=_iou * _iou_mask,
