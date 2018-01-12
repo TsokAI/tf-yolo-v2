@@ -1,5 +1,7 @@
 # yolov2 with tensorflow
 
+## it doesnt work well as i expected, i dont know why, please review code and let me know! thanks!
+
 ## dataset:
 create symlink to 'data' from dataset location, 'data' folder contain 'images' and 'annotation' subfolder
 
