@@ -2,13 +2,17 @@ from __future__ import absolute_import, division, print_function
 import numpy as np
 import config as cfg
 from utils.bbox import box_overlaps, anchor_overlaps
+from functools import partial
+from multiprocessing import Pool
+
+pool = Pool(processes=4)
 
 
-def compute_targets(im_shape, ft_shape,
-                    box_pred, iou_pred,
-                    gt_boxes, gt_classes, anchors):
+def compute_targets(data, im_shape, ft_shape, anchors):
     """Compute labels and masks for each image in batch
     """
+    box_pred, iou_pred, gt_boxes, gt_classes = data
+
     # remove dontcare boxes (cls -1) from groundtruth
     box_inds = np.where(gt_classes >= 0)[0]
     gt_boxes = gt_boxes[box_inds]
@@ -92,10 +96,10 @@ def compute_targets_batch(im_shape, ft_shape,
     Returns:
         labels and masks for cls, iou, box for regression
     """
-
-    targets = [compute_targets(im_shape, ft_shape, box_pred[b], iou_pred[b],
-                               gt_boxes[b], gt_classes[b], anchors)
-               for b in range(box_pred.shape[0])]
+    targets = pool.map(partial(compute_targets,
+                               im_shape=im_shape, ft_shape=ft_shape, anchors=anchors),
+                       ((box_pred[b], iou_pred[b], gt_boxes[b], gt_classes[b])
+                        for b in range(box_pred.shape[0])))
 
     _cls = np.stack(target[0] for target in targets)
     _cls_mask = np.stack(target[1] for target in targets)

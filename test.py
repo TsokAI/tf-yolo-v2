@@ -7,8 +7,8 @@ import tensorflow as tf
 import config as cfg
 from blob import BlobLoader
 from network import Network
-from py_postprocess import postprocess
-from py_evaluate import evaluate_image
+from postprocess import postprocess
+from evaluate import evaluate_image
 
 slim = tf.contrib.slim
 

@@ -7,7 +7,7 @@ import cv2
 import tensorflow as tf
 import config as cfg
 from network import Network
-from py_postprocess import postprocess
+from postprocess import postprocess
 from bounding_boxes import draw_targets
 
 slim = tf.contrib.slim
