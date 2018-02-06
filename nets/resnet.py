@@ -10,7 +10,7 @@ from nets.resnet_utils import subsample, conv2d_same
 
 slim = tf.contrib.slim
 
-model = 'resnet_v2_50'
+endpoint = 'resnet_v2_50'
 
 
 @ slim.add_arg_scope

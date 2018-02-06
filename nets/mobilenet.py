@@ -9,7 +9,7 @@ from tensorflow.python.pywrap_tensorflow import NewCheckpointReader
 
 slim = tf.contrib.slim
 
-model = 'MobilenetV1'
+endpoint = 'MobilenetV1'
 
 
 def depthsep_conv2d(inputs, num_outputs, kernel, stride, scope=None):

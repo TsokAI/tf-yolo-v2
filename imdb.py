@@ -10,7 +10,7 @@ for idx, label in enumerate(label_names):
     label2cls[label] = idx
 
 
-def prep_image(anno_dir, images_dir, xml, target_size):
+def load_image(anno_dir, images_dir, xml, target_size):
     # image in shape of [height, width, num_channels]
     # boxes in shape of [num_gt_boxes, (xmin, ymin, xmax, ymax)], scaled in target_size
     # classes in shape of [num_gt_boxes, (cls)]
@@ -55,11 +55,11 @@ def prep_image(anno_dir, images_dir, xml, target_size):
     return image, boxes, classes
 
 
-class BlobLoader:
+class Imdb:
     def __init__(self, anno_dir, images_dir, batch_size, target_size):
         self.anno_dir = anno_dir
         self.images_dir = images_dir
-        
+
         self.anno = os.listdir(self.anno_dir)
         self.num_anno = len(self.anno)
         self.batch_size = batch_size
@@ -76,7 +76,7 @@ class BlobLoader:
 
             end_idx = min(self.start_idx + self.batch_size, self.num_anno)
             for xml in self.anno[self.start_idx:end_idx]:
-                image, boxes, classes = prep_image(
+                image, boxes, classes = load_image(
                     self.anno_dir, self.images_dir, xml, self.target_size)
                 batch_images.append(image)
                 batch_boxes.append(boxes)
@@ -87,7 +87,6 @@ class BlobLoader:
             # add padding, list np.ndarray -> tf.tensor
             num_images = batch_images.shape[0]
             max_boxes_im = max([len(clss) for clss in batch_classes])
-            num_boxes_batch = sum([len(clss) for clss in batch_classes])
 
             batch_boxes_pad = np.zeros(
                 (num_images, max_boxes_im, 4), dtype=np.float32)
@@ -99,7 +98,7 @@ class BlobLoader:
                 batch_boxes_pad[i, 0:num_boxes_im, :] = batch_boxes[i]
                 batch_classes_pad[i, 0:num_boxes_im] = batch_classes[i]
 
-            yield batch_images, batch_boxes_pad, batch_classes_pad, num_boxes_batch
+            yield batch_images, batch_boxes_pad, batch_classes_pad
 
             # delete whatever yielded
             del batch_images
@@ -107,33 +106,9 @@ class BlobLoader:
             del batch_boxes_pad
             del batch_classes
             del batch_classes_pad
-            del num_boxes_batch
 
             self.start_idx = end_idx if end_idx < self.num_anno else 0
 
             # complete epoch
             if self.start_idx == 0:
                 break
-
-
-if __name__ == '__main__':  # test blob working
-    data_dir = os.path.join(os.getcwd(), 'data')
-    blob = BlobLoader(anno_dir=os.path.join(data_dir, 'annotation'),
-                      images_dir=os.path.join(data_dir, 'images'),
-                      batch_size=6, target_size=(416, 416))
-
-    for batch_images, batch_boxes, batch_classes, _ in blob.next_batch():
-        for b in range(len(batch_images)):
-            image = batch_images[b].astype(np.uint8)
-            boxes_inds = np.where(batch_classes[b] >= 0)[0]
-
-            print(boxes_inds)
-
-            for box in batch_boxes[b][boxes_inds]:
-                cv2.rectangle(image, (box[1], box[0]),
-                              (box[3], box[2]), (0, 0, 255), 1)
-
-            cv2.imshow('test_blob', image)
-            cv2.waitKey(0)
-
-        break

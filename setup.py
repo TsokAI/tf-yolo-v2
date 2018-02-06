@@ -118,31 +118,19 @@ class custom_build_ext(build_ext):
 # {'gcc': ["-Wno-cpp", "-Wno-unused-function"]} -> ["-Wno-cpp", "-Wno-unused-function"]
 ext_modules = [
     Extension(
-        "utils.bbox",
-        ["utils/bbox.pyx"],
+        "utils.bbox_transform",
+        ["utils/bbox_transform.pyx"],
         extra_compile_args={
             'gcc': ["-Wno-cpp", "-Wno-unused-function", "-fopenmp"]},
         extra_link_args=['-fopenmp'],
         include_dirs=[numpy_include, '.']
     ),
-    # Extension(
-    #     'compute_targets',
-    #     ['compute_targets.pyx'],
-    #     extra_compile_args={'gcc': ["-Wno-cpp", "-Wno-unused-function"]},
-    #     include_dirs=[numpy_include, '.']
-    # ),
-    # Extension(
-    #     'postprocess',
-    #     ['postprocess.pyx'],
-    #     extra_compile_args={'gcc': ["-Wno-cpp", "-Wno-unused-function"]},
-    #     include_dirs=[numpy_include, '.']
-    # ),
-    # Extension(
-    #     'evaluate',
-    #     ['evaluate.pyx'],
-    #     extra_compile_args={'gcc': ["-Wno-cpp", "-Wno-unused-function"]},
-    #     include_dirs=[numpy_include, '.']
-    # ),
+    Extension(
+        "utils.bbox",
+        ["utils/bbox.pyx"],
+        extra_compile_args={'gcc': ["-Wno-cpp", "-Wno-unused-function"]},
+        include_dirs=[numpy_include, '.']
+    ),
     Extension(
         "nms.cpu_nms",
         ["nms/cpu_nms.pyx"],
