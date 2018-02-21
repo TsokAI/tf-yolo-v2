@@ -1,17 +1,35 @@
 from __future__ import absolute_import, division, print_function
 import os
-import time
-from datetime import timedelta
 import numpy as np
 import cv2
-import tensorflow as tf
-import config as cfg
 from network import Network
+from utils.bounding_boxes import draw_targets
+from config import INP_SIZE
+import time
+from datetime import timedelta
 
-slim = tf.contrib.slim
 
-xla = tf.ConfigProto()
-xla.graph_options.optimizer_options.global_jit_level = tf.OptimizerOptions.ON_1
+images_dir = os.path.join(os.getcwd(), 'test')
 
-net = Network(session=tf.Session(config=xla),
-              im_shape=cfg.INP_SIZE, is_training=False)
+output_dir = os.path.join(images_dir, 'output')
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+
+net = Network(is_training=False)
+
+test_t = time.time()
+
+for i in os.listdir(images_dir):
+    image = cv2.imread(os.path.join(images_dir, i))
+
+    image = cv2.resize(image, (INP_SIZE, INP_SIZE))
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+    # batch_size is 1
+    box_pred, cls_inds, scores = net.predict(image[np.newaxis])
+
+    image = draw_targets(image, box_pred, cls_inds, scores)
+
+    cv2.imwrite(os.path.join(output_dir, i), image)
+
+print('testing done - time: {}'.format(str(timedelta(seconds=time.time() - test_t))))

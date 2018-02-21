@@ -1,5 +1,4 @@
 cimport cython
-from cython.parallel import prange, parallel
 import numpy as np
 cimport numpy as np
 
@@ -31,20 +30,19 @@ cdef bbox_transform_op(
     cdef DTYPE_t cx, cy, bh, bw
     cdef unsigned int b, row, col, a, ind
     
-    with nogil, parallel(num_threads=4):
-        for b in prange(bsize, schedule='dynamic'):
-            for row in range(H):
-                for col in range(W):
-                    ind = row * W + col
-                    for a in range(num_anchors):
-                        cx = bbox_pred[b, ind, a, 0] + row
-                        cy = bbox_pred[b, ind, a, 1] + col
-                        bh = anchors[a, 0] * bbox_pred[b, ind, a, 2] * 0.5
-                        bw = anchors[a, 1] * bbox_pred[b, ind, a, 3] * 0.5
-                        box_pred[b, ind, a, 0] = (cx - bh) / H
-                        box_pred[b, ind, a, 1] = (cy - bw) / W
-                        box_pred[b, ind, a, 2] = (cx + bh) / H
-                        box_pred[b, ind, a, 3] = (cy + bw) / W
+    for b in range(bsize):
+        for row in range(H):
+            for col in range(W):
+                ind = row * W + col
+                for a in range(num_anchors):
+                    cx = bbox_pred[b, ind, a, 0] + row
+                    cy = bbox_pred[b, ind, a, 1] + col
+                    bh = anchors[a, 0] * bbox_pred[b, ind, a, 2] * 0.5
+                    bw = anchors[a, 1] * bbox_pred[b, ind, a, 3] * 0.5
+                    box_pred[b, ind, a, 0] = (cx - bh) / H
+                    box_pred[b, ind, a, 1] = (cy - bw) / W
+                    box_pred[b, ind, a, 2] = (cx + bh) / H
+                    box_pred[b, ind, a, 3] = (cy + bw) / W
 
     return box_pred
 
@@ -56,9 +54,6 @@ cdef clip_boxes_op(
 
     cdef unsigned int N = boxes.shape[0]
     cdef unsigned int n
-
-    if N == 0:
-        return boxes
 
     for n in range(N):
         boxes[n, 0] = max(min(boxes[n, 0], H - 1), 0)

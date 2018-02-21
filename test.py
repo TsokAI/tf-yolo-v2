@@ -1,16 +1,16 @@
 from __future__ import absolute_import, division, print_function
 import os
-import time
-from datetime import timedelta
-import numpy as np
-import tensorflow as tf
-import config as cfg
+from imdb import Imdb
 from network import Network
 
-slim = tf.contrib.slim
+data_dir = os.path.join(os.getcwd(), 'data')
+anno_dir = os.path.join(data_dir, 'eval_annotation')
+images_dir = os.path.join(data_dir, 'images')
 
-xla = tf.ConfigProto()
-xla.graph_options.optimizer_options.global_jit_level = tf.OptimizerOptions.ON_1
+imdb = Imdb(anno_dir, images_dir,
+            batch_size=1)
 
-net = Network(session=tf.Session(config=xla),
-              im_shape=cfg.inp_size, is_training=False)
+net = Network(is_training=False)
+
+for images, gt_boxes, gt_cls in imdb.next_batch():  # batch_size is 1
+    box_pred, cls_inds, scores = net.predict(images)
