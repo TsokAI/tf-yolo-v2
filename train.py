@@ -11,7 +11,7 @@ anno_dir = os.path.join(data_dir, 'annotation')
 images_dir = os.path.join(data_dir, 'images')
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--num_epochs', type=int, default=25)
+parser.add_argument('--num_epochs', type=int, default=1)
 parser.add_argument('--batch_size', type=int, default=1)
 parser.add_argument('--learn_rate', type=float, default=1e-3)
 args = parser.parse_args()

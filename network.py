@@ -17,25 +17,6 @@ if not os.path.exists(ckpt_dir):
     os.makedirs(ckpt_dir)
 
 
-def smooth_l1(target, prediction, weights=1.0, anchorwise=False, scope=None):
-    """Compute l1 loss for bounding boxes regression
-    Parameters:
-        target, prediction: np.ndarray [batch_size, hw, num_anchors_cell, codesize]
-        weights: np.ndarray [batch_size, hw, num_anchors_cell]
-        anchorwise: reduction (loss for each anchors), default is False
-    """
-
-    with tf.variable_scope(scope, 'smooth_l1_loss'):
-        abs_diff = tf.abs(prediction - target)
-        anchorwise_smooth_l1 = tf.reduce_sum(tf.where(
-            tf.less(abs_diff, 1), 0.5*tf.square(abs_diff), abs_diff-0.5), 3) * weights
-
-        if not anchorwise:
-            anchorwise_smooth_l1 = tf.reduce_sum(anchorwise_smooth_l1)
-
-    return anchorwise_smooth_l1
-
-
 class Network:
     def __init__(self, is_training=True, lr=None):
         self.sess = tf.Session(config=xla)  # new session with xla/jit
@@ -65,6 +46,8 @@ class Network:
         # sig(to) for iou (predition-groundtruth) prediction
         iou_pred = tf.sigmoid(logits[:, :, :, 4:5])
 
+        cls_pred = tf.nn.softmax(logits[:, :, :, 5:])
+
         if is_training:
             if lr is None:
                 raise ValueError('learning rate is not none')
@@ -82,24 +65,13 @@ class Network:
                                                                                             [tf.float32] * 6,
                                                                                             name='proposal_target_layer')
 
-            # bbox_loss with smooth_l1, bbox_mask in {0, BBOX_SCALE=1}
-            # rescale with number of positive boxes
-            self.bbox_loss = smooth_l1(bbox_target*bbox_mask, bbox_pred*bbox_mask,
-                                       scope='bbox_loss') / tf.reduce_sum(bbox_mask)
+            self.bbox_loss = tf.losses.mean_squared_error(
+                bbox_target*bbox_mask, bbox_pred*bbox_mask, scope='bbox_loss')
 
-            # iou_loss with mean_squared_error
             self.iou_loss = tf.losses.mean_squared_error(
                 iou_target*iou_mask, iou_pred*iou_mask, scope='iou_loss')
 
-            # cls_loss with (weighted) softmax_cross_entropy
-            cls_pred = tf.reshape(
-                logits[:, :, :, 5:], shape=[-1, cfg.NUM_CLASSES])
-
-            cls_target = tf.reshape(cls_target, shape=[-1, cfg.NUM_CLASSES])
-
-            cls_mask = tf.reshape(cls_mask, shape=[-1, 1])
-
-            self.cls_loss = tf.losses.softmax_cross_entropy(
+            self.cls_loss = tf.losses.mean_squared_error(
                 cls_target*cls_mask, cls_pred*cls_mask, scope='cls_loss')
 
             # training
@@ -111,8 +83,6 @@ class Network:
 
         else:
             # testing, batch_size is 1
-            cls_pred = tf.nn.softmax(logits[:, :, :, 5:])
-
             self.box_pred, self.cls_inds, self.scores = tf.py_func(proposal_layer,
                                                                    [bbox_pred, iou_pred, cls_pred,
                                                                     self.anchors, ls],
