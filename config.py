@@ -1,3 +1,5 @@
+DATASET = 'voc07'
+
 LABEL_NAMES = ['aeroplane', 'bicycle', 'bird', 'boat', 'bottle',
                'bus', 'car', 'cat', 'chair', 'cow', 'diningtable',
                'dog', 'horse', 'motorbike', 'person', 'pottedplant',
@@ -9,7 +11,7 @@ INP_SIZE = 400  # image 400x400 RGB
 
 NUM_ANCHORS_CELL = 5
 
-USE_GPU = False
+USE_GPU = True
 
 # training
 IOU_THRESH = 0.6  # positive rois

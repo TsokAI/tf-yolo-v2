@@ -62,9 +62,9 @@ def forward(inputs, num_outputs, is_training=True, scope=None):
                 net = depthsep_conv2d(net, 1024, [3, 3],
                                       stride=1, scope='Conv2d_13')
 
-                # logit block
+                # logits block
                 net = slim.conv2d(net, num_outputs, [1, 1],
-                                  activation_fn=None, normalizer_fn=None, scope='_logits_')
+                                  activation_fn=None, normalizer_fn=None, scope='logits')
 
     return net
 

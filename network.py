@@ -12,7 +12,7 @@ slim = tf.contrib.slim
 xla = tf.ConfigProto()
 xla.graph_options.optimizer_options.global_jit_level = tf.OptimizerOptions.ON_1
 
-ckpt_dir = os.path.join(os.getcwd(), 'ckpt', endpoint)
+ckpt_dir = os.path.join(os.getcwd(), 'ckpt', cfg.DATASET + endpoint)
 if not os.path.exists(ckpt_dir):
     os.makedirs(ckpt_dir)
 
@@ -46,11 +46,12 @@ class Network:
         # sig(to) for iou (predition-groundtruth) prediction
         iou_pred = tf.sigmoid(logits[:, :, :, 4:5])
 
-        cls_pred = tf.nn.softmax(logits[:, :, :, 5:])
+        # cls_pred = tf.nn.softmax(logits[:, :, :, 5:])
+        cls_pred = logits[:, :, :, 5:]
 
         if is_training:
             if lr is None:
-                raise ValueError('learning rate is not none')
+                raise ValueError('learning rate is not none in training')
 
             # training placeholders
             self.gt_boxes_ph = tf.placeholder(tf.float32)
@@ -64,14 +65,16 @@ class Network:
                                                                                              self.anchors, ls],
                                                                                             [tf.float32] * 6,
                                                                                             name='proposal_target_layer')
-
+            # can apply smooth_l1 and softmax_cross_entropy on bbox_loss and cls_loss?
             self.bbox_loss = tf.losses.mean_squared_error(
                 bbox_target*bbox_mask, bbox_pred*bbox_mask, scope='bbox_loss')
 
             self.iou_loss = tf.losses.mean_squared_error(
                 iou_target*iou_mask, iou_pred*iou_mask, scope='iou_loss')
 
-            self.cls_loss = tf.losses.mean_squared_error(
+            # self.cls_loss = tf.losses.mean_squared_error(
+            #     cls_target*cls_mask, cls_pred*cls_mask, scope='cls_loss')
+            self.cls_loss = tf.losses.softmax_cross_entropy(
                 cls_target*cls_mask, cls_pred*cls_mask, scope='cls_loss')
 
             # training
@@ -83,10 +86,13 @@ class Network:
 
         else:
             # testing, batch_size is 1
+            cls_pred = tf.nn.softmax(cls_pred)
+
             self.box_pred, self.cls_inds, self.scores = tf.py_func(proposal_layer,
                                                                    [bbox_pred, iou_pred, cls_pred,
                                                                     self.anchors, ls],
-                                                                   [tf.float32] * 3,
+                                                                   [tf.float32, tf.int8,
+                                                                       tf.float32],
                                                                    name='proposal_layer')
 
         self.saver = tf.train.Saver(max_to_keep=1)
@@ -100,6 +106,7 @@ class Network:
             print('restored checkpoint from:', last_ckpt_path)
         except:
             print('init variables')
+            # from slim pretrained model
             restore(self.sess, tf.global_variables())
 
     def save_ckpt(self, step):
@@ -109,7 +116,7 @@ class Network:
 
         print('saved checkpoint at step {}'.format(step))
 
-    def fit(self, images, gt_boxes, gt_cls):
+    def fit(self, images, gt_boxes, gt_cls):  # training on batch
         step, bbox_loss, iou_loss, cls_loss, _ = self.sess.run([self.global_step,
                                                                 self.bbox_loss, self.iou_loss, self.cls_loss,
                                                                 self.optimizer],

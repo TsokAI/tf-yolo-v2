@@ -9,7 +9,7 @@ from tensorflow.python.pywrap_tensorflow import NewCheckpointReader
 
 slim = tf.contrib.slim
 
-endpoint = 'vgg_16'
+endpoint = 'vgg_16'  # modified vgg_16 with 1-1-2-2-2
 
 
 def forward(inputs, num_outputs, is_training=True, scope=None):
@@ -38,7 +38,7 @@ def forward(inputs, num_outputs, is_training=True, scope=None):
                                   [3, 3], scope='conv5')
                 # net = slim.max_pool2d(net, [2, 2], scope='pool5')
 
-                # logit block
+                # logits block
                 net = slim.conv2d(net, num_outputs, [1, 1],
                                   activation_fn=None, normalizer_fn=None, scope='logits')
 

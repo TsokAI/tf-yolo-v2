@@ -1,11 +1,13 @@
+# compute targets for regression/classification from proposal_target_layer
 from __future__ import absolute_import, division, print_function
 import numpy as np
 from utils.bbox import box_overlaps, anchor_overlaps
 import config as cfg
 
 
-def compute_targets(feed, anchors, ls):
-    box_pred, iou_pred, gt_boxes, gt_cls = feed
+def compute_targets(feed_data, anchors, ls):
+    # ls: logit's size (hw) of feature map
+    box_pred, iou_pred, gt_boxes, gt_cls = feed_data
 
     # rescale box_pred to inp_size
     box_pred *= cfg.INP_SIZE
@@ -70,7 +72,7 @@ def compute_targets(feed, anchors, ls):
         iou_target[cell_i, a, :] = box_ious[cell_i, a, i]
 
         bbox_mask[cell_i, a, :] = cfg.BBOX_SCALE
-        box_target[:, 2:4] /= anchors[a]
+        box_target[i, 2:4] /= anchors[a]
         bbox_target[cell_i, a, :] = box_target[i]
 
         cls_mask[cell_i, a, :] = cfg.CLS_SCALE

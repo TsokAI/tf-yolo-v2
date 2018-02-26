@@ -10,7 +10,7 @@ from nets.resnet_utils import subsample, conv2d_same
 
 slim = tf.contrib.slim
 
-endpoint = 'resnet_v2_50'
+endpoint = 'resnet_v2_50'  # modified resnet50 with 3 blocks
 
 
 @ slim.add_arg_scope
@@ -96,15 +96,15 @@ def forward(inputs, num_outputs, is_training=True, scope=None):
                     net, base_depth=128, num_units=4, stride=2, scope='block2')
                 net = resnet_v2_block(
                     net, base_depth=256, num_units=6, stride=2, scope='block3')
-                net = resnet_v2_block(
-                    net, base_depth=512, num_units=3, stride=1, scope='block4')
+                # net = resnet_v2_block(
+                #     net, base_depth=512, num_units=3, stride=1, scope='block4')
                 net = slim.batch_norm(
                     net, activation_fn=tf.nn.relu, scope='postnorm')
 
-                # logit block
+                # logits block
                 net = slim.conv2d(net, num_outputs, [1, 1],
                                   activation_fn=None, normalizer_fn=None,
-                                  scope='_logits_')
+                                  scope='logits')
 
     return net
 

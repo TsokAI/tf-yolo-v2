@@ -93,7 +93,7 @@ class Imdb:
             batch_boxes_pad = np.zeros(
                 (num_images, max_boxes_im, 4), dtype=np.float32)
             batch_classes_pad = np.full(
-                (num_images, max_boxes_im), -1, dtype=np.int8)  # -1 mean dontcare
+                (num_images, max_boxes_im), -1, dtype=np.int8)  # -1 mean dontcare, removed in compute targets
 
             for i in range(num_images):
                 num_boxes_im = len(batch_classes[i])

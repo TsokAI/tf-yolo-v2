@@ -73,24 +73,26 @@ ext_modules = [
     Extension(
         "utils.bbox_transform",
         ["utils/bbox_transform.pyx"],
-        extra_compile_args=["-Wno-cpp", "-Wno-unused-function"],
+        extra_compile_args={'gcc': ["-Wno-cpp", "-Wno-unused-function"]},
         include_dirs=[numpy_include, '.']
     ),
     Extension(
         "utils.bbox",
         ["utils/bbox.pyx"],
-        extra_compile_args=["-Wno-cpp", "-Wno-unused-function"],
+        extra_compile_args={'gcc': ["-Wno-cpp", "-Wno-unused-function"]},
         include_dirs=[numpy_include, '.']
     ),
     Extension(
         "nms.cpu_nms",
         ["nms/cpu_nms.pyx"],
-        extra_compile_args=["-Wno-cpp", "-Wno-unused-function"],
+        extra_compile_args={'gcc': ["-Wno-cpp", "-Wno-unused-function"]},
         include_dirs=[numpy_include, '.']
     )
 ]
 
 if USE_GPU:
+    CUDA = locate_cuda()
+
     ext_modules.append(
         Extension(
             'nms.gpu_nms',
@@ -111,8 +113,6 @@ if USE_GPU:
             include_dirs=[numpy_include, CUDA['include'], '.']
         )
     )
-
-    CUDA = locate_cuda()
 
 
 def customize_compiler_for_nvcc(self):
