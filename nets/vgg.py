@@ -9,7 +9,7 @@ from tensorflow.python.pywrap_tensorflow import NewCheckpointReader
 
 slim = tf.contrib.slim
 
-endpoint = 'vgg_16'  # modified vgg_16 with 1-1-2-2-2
+endpoint = 'vgg_16'
 
 
 def forward(inputs, num_outputs, is_training=True, scope=None):
@@ -18,23 +18,23 @@ def forward(inputs, num_outputs, is_training=True, scope=None):
         with slim.arg_scope([slim.conv2d],
                             normalizer_fn=slim.batch_norm):
             with slim.arg_scope([slim.batch_norm], is_training=is_training):
-                net = slim.repeat(inputs, 1, slim.conv2d, 64,
+                net = slim.repeat(inputs, 2, slim.conv2d, 64,
                                   [3, 3], scope='conv1')
                 net = slim.max_pool2d(net, [2, 2], scope='pool1')
 
-                net = slim.repeat(net, 1, slim.conv2d, 128,
+                net = slim.repeat(net, 2, slim.conv2d, 128,
                                   [3, 3], scope='conv2')
                 net = slim.max_pool2d(net, [2, 2], scope='pool2')
 
-                net = slim.repeat(net, 2, slim.conv2d, 256,
+                net = slim.repeat(net, 3, slim.conv2d, 256,
                                   [3, 3], scope='conv3')
                 net = slim.max_pool2d(net, [2, 2], scope='pool3')
 
-                net = slim.repeat(net, 2, slim.conv2d, 512,
+                net = slim.repeat(net, 3, slim.conv2d, 512,
                                   [3, 3], scope='conv4')
                 net = slim.max_pool2d(net, [2, 2], scope='pool4')
 
-                net = slim.repeat(net, 2, slim.conv2d, 512,
+                net = slim.repeat(net, 3, slim.conv2d, 512,
                                   [3, 3], scope='conv5')
                 # net = slim.max_pool2d(net, [2, 2], scope='pool5')
 

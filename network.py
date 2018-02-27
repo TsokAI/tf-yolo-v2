@@ -46,7 +46,6 @@ class Network:
         # sig(to) for iou (predition-groundtruth) prediction
         iou_pred = tf.sigmoid(logits[:, :, :, 4:5])
 
-        # cls_pred = tf.nn.softmax(logits[:, :, :, 5:])
         cls_pred = logits[:, :, :, 5:]
 
         if is_training:
@@ -65,17 +64,23 @@ class Network:
                                                                                              self.anchors, ls],
                                                                                             [tf.float32] * 6,
                                                                                             name='proposal_target_layer')
-            # can apply smooth_l1 and softmax_cross_entropy on bbox_loss and cls_loss?
+
+            RSUM = tf.losses.Reduction.SUM
+
             self.bbox_loss = tf.losses.mean_squared_error(
-                bbox_target*bbox_mask, bbox_pred*bbox_mask, scope='bbox_loss')
+                bbox_target*bbox_mask, bbox_pred*bbox_mask, scope='bbox_loss', reduction=RSUM)
 
             self.iou_loss = tf.losses.mean_squared_error(
-                iou_target*iou_mask, iou_pred*iou_mask, scope='iou_loss')
+                iou_target*iou_mask, iou_pred*iou_mask, scope='iou_loss', reduction=RSUM)
 
-            # self.cls_loss = tf.losses.mean_squared_error(
-            #     cls_target*cls_mask, cls_pred*cls_mask, scope='cls_loss')
+            cls_target = tf.reshape(cls_target, [-1, cfg.NUM_CLASSES])
+
+            cls_pred = tf.reshape(cls_pred, [-1, cfg.NUM_CLASSES])
+
+            cls_mask = tf.reshape(cls_mask, [-1, 1])
+
             self.cls_loss = tf.losses.softmax_cross_entropy(
-                cls_target*cls_mask, cls_pred*cls_mask, scope='cls_loss')
+                cls_target*cls_mask, cls_pred*cls_mask, scope='cls_loss', reduction=RSUM)
 
             # training
             self.global_step = tf.Variable(

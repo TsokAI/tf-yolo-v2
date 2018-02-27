@@ -8,7 +8,6 @@ from config import INP_SIZE
 import time
 from datetime import timedelta
 
-
 images_dir = os.path.join(os.getcwd(), 'test')
 
 output_dir = os.path.join(images_dir, 'output')
