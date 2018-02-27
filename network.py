@@ -46,7 +46,8 @@ class Network:
         # sig(to) for iou (predition-groundtruth) prediction
         iou_pred = tf.sigmoid(logits[:, :, :, 4:5])
 
-        cls_pred = logits[:, :, :, 5:]
+        # cls_pred = logits[:, :, :, 5:]
+        cls_pred = tf.nn.softmax(logits[:, :, :, 5:])
 
         if is_training:
             if lr is None:
@@ -73,14 +74,17 @@ class Network:
             self.iou_loss = tf.losses.mean_squared_error(
                 iou_target*iou_mask, iou_pred*iou_mask, scope='iou_loss', reduction=RSUM)
 
-            cls_target = tf.reshape(cls_target, [-1, cfg.NUM_CLASSES])
-
-            cls_pred = tf.reshape(cls_pred, [-1, cfg.NUM_CLASSES])
-
-            cls_mask = tf.reshape(cls_mask, [-1, 1])
-
-            self.cls_loss = tf.losses.softmax_cross_entropy(
+            self.cls_loss = tf.losses.mean_squared_error(
                 cls_target*cls_mask, cls_pred*cls_mask, scope='cls_loss', reduction=RSUM)
+
+            # cls_target = tf.reshape(cls_target, [-1, cfg.NUM_CLASSES])
+
+            # cls_pred = tf.reshape(cls_pred, [-1, cfg.NUM_CLASSES])
+
+            # cls_mask = tf.reshape(cls_mask, [-1, 1])
+
+            # self.cls_loss = tf.losses.softmax_cross_entropy(
+            #     cls_target*cls_mask, cls_pred*cls_mask, scope='cls_loss', reduction=RSUM)
 
             # training
             self.global_step = tf.Variable(
@@ -91,10 +95,10 @@ class Network:
 
         else:
             # testing, batch_size is 1
-            cls_pred = tf.nn.softmax(cls_pred)
+            # cls_pred = tf.nn.softmax(cls_pred)
 
             self.box_pred, self.cls_inds, self.scores = tf.py_func(proposal_layer,
-                                                                   [bbox_pred, iou_pred, cls_pred,
+                                                                   [bbox_pred[0], iou_pred[0], cls_pred[0],
                                                                     self.anchors, ls],
                                                                    [tf.float32, tf.int8,
                                                                        tf.float32],

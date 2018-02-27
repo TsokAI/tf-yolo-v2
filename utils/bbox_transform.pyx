@@ -7,8 +7,8 @@ ctypedef np.float32_t DTYPE_t
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef bbox_transform_op(
-        np.ndarray[DTYPE_t, ndim=4] bbox_pred,
+cdef bbox_transform_inv_op(
+        np.ndarray[DTYPE_t, ndim=3] bbox_pred,
         np.ndarray[DTYPE_t, ndim=2] anchors, 
         int H, int W):
     """
@@ -17,32 +17,30 @@ cdef bbox_transform_op(
     ----------
     Parameters
     ----------
-    bbox_pred: 4-dim float ndarray [bsize, HxW, num_anchors, 4] of (sig(tx), sig(ty), exp(th), exp(tw))
+    bbox_pred: 3-dim float ndarray [HxW, num_anchors, 4] of (sig(tx), sig(ty), exp(th), exp(tw))
     anchors: [num_anchors, 2] of (ph, pw)
     H, W: height, width of feature map
     Returns
     -------
-    box_pred: 4-dim float ndarray [bsize, HxW, num_anchors, 4] of bbox (x1, y1, x2, y2) rescaled to (0, 1)
+    box_pred: 3-dim float ndarray [HxW, num_anchors, 4] of bbox (x1, y1, x2, y2) rescaled to (0, 1)
     """
-    cdef unsigned int bsize = bbox_pred.shape[0]
     cdef unsigned int num_anchors = anchors.shape[0]
-    cdef np.ndarray[DTYPE_t, ndim=4] box_pred = np.zeros((bsize, H*W, num_anchors, 4), dtype=DTYPE)
+    cdef np.ndarray[DTYPE_t, ndim=3] box_pred = np.zeros((H*W, num_anchors, 4), dtype=DTYPE)
     cdef DTYPE_t cx, cy, bh, bw
-    cdef unsigned int b, row, col, a, ind
+    cdef unsigned int row, col, a, ind
     
-    for b in range(bsize):
-        for row in range(H):
-            for col in range(W):
-                ind = row * W + col
-                for a in range(num_anchors):
-                    cx = bbox_pred[b, ind, a, 0] + row
-                    cy = bbox_pred[b, ind, a, 1] + col
-                    bh = anchors[a, 0] * bbox_pred[b, ind, a, 2] * 0.5
-                    bw = anchors[a, 1] * bbox_pred[b, ind, a, 3] * 0.5
-                    box_pred[b, ind, a, 0] = (cx - bh) / H
-                    box_pred[b, ind, a, 1] = (cy - bw) / W
-                    box_pred[b, ind, a, 2] = (cx + bh) / H
-                    box_pred[b, ind, a, 3] = (cy + bw) / W
+    for row in range(H):
+        for col in range(W):
+            ind = row * W + col
+            for a in range(num_anchors):
+                cx = bbox_pred[ind, a, 0] + row
+                cy = bbox_pred[ind, a, 1] + col
+                bh = anchors[a, 0] * bbox_pred[ind, a, 2] * 0.5
+                bw = anchors[a, 1] * bbox_pred[ind, a, 3] * 0.5
+                box_pred[ind, a, 0] = (cx - bh) / H
+                box_pred[ind, a, 1] = (cy - bw) / W
+                box_pred[ind, a, 2] = (cx + bh) / H
+                box_pred[ind, a, 3] = (cy + bw) / W
 
     return box_pred
 
@@ -63,12 +61,12 @@ cdef clip_boxes_op(
 
     return boxes
 
-def bbox_transform(
-        np.ndarray[DTYPE_t, ndim=4] bbox_pred,
+def bbox_transform_inv(
+        np.ndarray[DTYPE_t, ndim=3] bbox_pred,
         np.ndarray[DTYPE_t, ndim=2] anchors, 
         int H, int W):
     
-    return bbox_transform_op(bbox_pred, anchors, H, W)
+    return bbox_transform_inv_op(bbox_pred, anchors, H, W)
 
 def clip_boxes(
     np.ndarray[DTYPE_t, ndim=2] boxes,

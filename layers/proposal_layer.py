@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import numpy as np
-from utils.bbox_transform import bbox_transform, clip_boxes
+from utils.bbox_transform import bbox_transform_inv, clip_boxes
 from nms.cpu_nms import cpu_nms
 from nms.gpu_nms import gpu_nms
 import config as cfg
@@ -16,11 +16,9 @@ def nms_detection(dets, thresh):
 
 
 def proposal_layer(bbox_pred, iou_pred, cls_pred, anchors, ls):
-    assert bbox_pred.shape[0] == 1  # batch_size must be 1
+    box_pred = bbox_transform_inv(np.ascontiguousarray(bbox_pred, dtype=np.float32), np.ascontiguousarray(
+        anchors, dtype=np.float32), ls, ls) * cfg.INP_SIZE
 
-    box_pred = bbox_transform(np.ascontiguousarray(bbox_pred, dtype=np.float32),
-                              anchors, ls, ls)
-    box_pred *= cfg.INP_SIZE
     box_pred = np.reshape(box_pred, [-1, 4])
 
     iou_pred = np.reshape(iou_pred, [-1, 1])

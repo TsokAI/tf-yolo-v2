@@ -1,21 +1,22 @@
 # compute targets for regression/classification from proposal_target_layer
 from __future__ import absolute_import, division, print_function
 import numpy as np
+from utils.bbox_transform import bbox_transform_inv
 from utils.bbox import box_overlaps, anchor_overlaps
 import config as cfg
 
 
 def compute_targets(feed_data, anchors, ls):
-    # ls: logit's size (hw) of feature map
-    box_pred, iou_pred, gt_boxes, gt_cls = feed_data
-
-    # rescale box_pred to inp_size
-    box_pred *= cfg.INP_SIZE
+    bbox_pred, iou_pred, gt_boxes, gt_cls = feed_data
 
     # filter ignored groundtruth boxes
     gt_inds = np.where(gt_cls >= 0)[0]
     gt_boxes = gt_boxes[gt_inds]
     gt_cls = gt_cls[gt_inds]
+
+    # transform bbox and rescale to inp_size
+    box_pred = bbox_transform_inv(np.ascontiguousarray(bbox_pred, dtype=np.float32), np.ascontiguousarray(
+        anchors, dtype=np.float32), ls, ls) * cfg.INP_SIZE
 
     hw, num_anchors, _ = box_pred.shape
 
@@ -55,8 +56,8 @@ def compute_targets(feed_data, anchors, ls):
     # select best anchor for each groundtruth boxes
     gt_boxes /= feat_stride  # rescale to anchors' scale
 
-    anchor_ious = anchor_overlaps(
-        anchors, np.ascontiguousarray(gt_boxes, dtype=np.float32))
+    anchor_ious = anchor_overlaps(np.ascontiguousarray(
+        anchors, dtype=np.float32), np.ascontiguousarray(gt_boxes, dtype=np.float32))
 
     anchor_inds = np.argmax(anchor_ious, axis=0)
 

@@ -22,13 +22,8 @@ def proposal_target_layer(bbox_pred, iou_pred, gt_boxes, gt_cls, anchors, ls):
     """
 
     # transform bbox_pred and rescale to inp_size
-    anchors = np.ascontiguousarray(anchors, dtype=np.float32)
-
-    box_pred = bbox_transform(np.ascontiguousarray(
-        bbox_pred, dtype=np.float32), anchors, ls, ls)
-
     targets = pool.map(partial(compute_targets, anchors=anchors, ls=ls),
-                       ((box_pred[i], iou_pred[i], gt_boxes[i], gt_cls[i])
+                       ((bbox_pred[i], iou_pred[i], gt_boxes[i], gt_cls[i])
                         for i in range(gt_boxes.shape[0])))
 
     bbox_target = np.stack(t[0] for t in targets)
