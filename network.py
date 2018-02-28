@@ -66,7 +66,7 @@ class Network:
                                                                                             [tf.float32] * 6,
                                                                                             name='proposal_target_layer')
 
-            RSUM = tf.losses.Reduction.SUM
+            RSUM = tf.losses.Reduction.SUM  # remove effect of zeros
 
             self.bbox_loss = tf.losses.mean_squared_error(
                 bbox_target*bbox_mask, bbox_pred*bbox_mask, scope='bbox_loss', reduction=RSUM)

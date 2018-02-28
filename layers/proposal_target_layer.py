@@ -2,8 +2,7 @@ from __future__ import absolute_import, division, print_function
 import numpy as np
 from multiprocessing import Pool
 from functools import partial
-from utils.bbox_transform import bbox_transform
-from layers.compute_targets import compute_targets
+from layers.compute_targets import compute_targets_image
 
 pool = Pool(processes=4)
 
@@ -20,9 +19,7 @@ def proposal_target_layer(bbox_pred, iou_pred, gt_boxes, gt_cls, anchors, ls):
     Return:
         groundtruths, masks: np.ndarray [batch_size, hw, num_anchors_cell, codesize]
     """
-
-    # transform bbox_pred and rescale to inp_size
-    targets = pool.map(partial(compute_targets, anchors=anchors, ls=ls),
+    targets = pool.map(partial(compute_targets_image, anchors=anchors, ls=ls),
                        ((bbox_pred[i], iou_pred[i], gt_boxes[i], gt_cls[i])
                         for i in range(gt_boxes.shape[0])))
 

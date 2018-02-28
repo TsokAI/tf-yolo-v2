@@ -17,7 +17,8 @@ parser.add_argument('--learn_rate', type=float, default=1e-3)
 args = parser.parse_args()
 
 imdb = Imdb(anno_dir, images_dir,
-            batch_size=args.batch_size)
+            batch_size=args.batch_size,
+            max_images=500)
 
 net = Network(is_training=True, lr=args.learn_rate)
 

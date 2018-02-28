@@ -48,19 +48,22 @@ def load_image(anno_dir, images_dir, xml):
     image = cv2.resize(image, (cfg.INP_SIZE, cfg.INP_SIZE))
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-    # if np.random.randint(0, 2):  # randomly left-right flipping
-    #     image = cv2.flip(image, 1)
-    #     boxes[:, 1::2] = cfg.INP_SIZE - boxes[:, 1::2]
+    if np.random.randint(0, 2):  # randomly left-right flipping
+        image = cv2.flip(image, 1)
+        boxes[:, 1::2] = cfg.INP_SIZE - boxes[:, 1::2]
 
     return image, boxes, classes
 
 
 class Imdb:
-    def __init__(self, anno_dir, images_dir, batch_size):
+    def __init__(self, anno_dir, images_dir, batch_size, max_images=None):
         self.anno_dir = anno_dir
         self.images_dir = images_dir
 
         self.anno = os.listdir(self.anno_dir)
+        if max_images is not None:
+            self.anno = self.anno[:max_images]
+
         self.size = len(self.anno)
         self.batch_size = batch_size
         self.start_idx = 0

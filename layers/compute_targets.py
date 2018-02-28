@@ -6,7 +6,7 @@ from utils.bbox import box_overlaps, anchor_overlaps
 import config as cfg
 
 
-def compute_targets(feed_data, anchors, ls):
+def compute_targets_image(feed_data, anchors, ls):
     bbox_pred, iou_pred, gt_boxes, gt_cls = feed_data
 
     # filter ignored groundtruth boxes
@@ -25,7 +25,11 @@ def compute_targets(feed_data, anchors, ls):
     iou_target = np.zeros((hw, num_anchors, 1), dtype=np.float32)
     iou_mask = np.zeros((hw, num_anchors, 1), dtype=np.float32)
     bbox_target = np.zeros((hw, num_anchors, 4), dtype=np.float32)
-    bbox_mask = np.zeros((hw, num_anchors, 1), dtype=np.float32)
+    bbox_mask = np.zeros((hw, num_anchors, 1), dtype=np.float32) + 0.01
+
+    # warm-up regression
+    bbox_target[:, :, 0:2] = 0.5
+    bbox_target[:, :, 2:4] = 1.0
 
     # compute overlaps btw prediction and groundtruth boxes
     box_pred = np.reshape(box_pred, [-1, 4])
@@ -47,6 +51,7 @@ def compute_targets(feed_data, anchors, ls):
     cell_inds = np.floor(cx) * ls + np.floor(cy)
     cell_inds = cell_inds.astype(np.int)
 
+    # transform to bbox
     box_target = np.empty(gt_boxes.shape, dtype=np.float32)
     box_target[:, 0] = cx - np.floor(cx)
     box_target[:, 1] = cy - np.floor(cy)
@@ -54,7 +59,7 @@ def compute_targets(feed_data, anchors, ls):
     box_target[:, 3] = (gt_boxes[:, 3] - gt_boxes[:, 1]) / feat_stride
 
     # select best anchor for each groundtruth boxes
-    gt_boxes /= feat_stride  # rescale to anchors' scale
+    gt_boxes /= feat_stride  # rescale to logits' scale
 
     anchor_ious = anchor_overlaps(np.ascontiguousarray(
         anchors, dtype=np.float32), np.ascontiguousarray(gt_boxes, dtype=np.float32))
@@ -63,7 +68,7 @@ def compute_targets(feed_data, anchors, ls):
 
     # compute targets, masks
     for i, cell_i in enumerate(cell_inds):
-        if cell_i >= hw or cell_i < 0:
+        if cell_i >= hw or cell_i < 0:  # skip gt outside logits
             continue
 
         a = anchor_inds[i]
