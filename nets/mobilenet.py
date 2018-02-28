@@ -74,26 +74,26 @@ def restore(sess, global_vars):
     reader = NewCheckpointReader(os.path.join(
         os.getcwd(), 'model/mobilenet_v1_1.0_224.ckpt'))
 
-    # restore weights and batchnorm from conv layers
-    restored_var_names = [name + ':0'
-                          for name in reader.get_variable_to_dtype_map().keys()
-                          if re.match('^.*weights$', name) or re.match('^.*BatchNorm', name)]
+    # restore similars of global_vars and pretrained_vars, not include logits and global_step
+    pretrained_var_names = [name + ':0'
+                            for name in reader.get_variable_to_dtype_map().keys()
+                            if not re.match('logits', name) and name != 'global_step']
 
-    restored_vars = [var for var in global_vars
-                     if var.name in restored_var_names]
+    restoring_vars = [var for var in global_vars
+                      if var.name in pretrained_var_names]
 
-    restored_var_names = [var.name[:-2] for var in restored_vars]
+    restoring_var_names = [var.name[:-2] for var in restoring_vars]
 
     value_ph = tf.placeholder(dtype=tf.float32)
 
-    for i in range(len(restored_var_names)):
-        sess.run(tf.assign(restored_vars[i], value_ph),
-                 feed_dict={value_ph: reader.get_tensor(restored_var_names[i])})
+    for i in range(len(restoring_var_names)):
+        sess.run(tf.assign(restoring_vars[i], value_ph),
+                 feed_dict={value_ph: reader.get_tensor(restoring_var_names[i])})
 
-    initialized_vars = [var for var in global_vars
-                        if not var in restored_vars]
+    initializing_vars = [var for var in global_vars
+                         if not var in restoring_vars]
 
-    sess.run(tf.variables_initializer(initialized_vars))
+    sess.run(tf.variables_initializer(initializing_vars))
 
 
 def preprocess(images):

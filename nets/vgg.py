@@ -26,15 +26,15 @@ def forward(inputs, num_outputs, is_training=True, scope=None):
                                   [3, 3], scope='conv2')
                 net = slim.max_pool2d(net, [2, 2], scope='pool2')
 
-                net = slim.repeat(net, 2, slim.conv2d, 256,
+                net = slim.repeat(net, 3, slim.conv2d, 256,
                                   [3, 3], scope='conv3')
                 net = slim.max_pool2d(net, [2, 2], scope='pool3')
 
-                net = slim.repeat(net, 2, slim.conv2d, 512,
+                net = slim.repeat(net, 3, slim.conv2d, 512,
                                   [3, 3], scope='conv4')
                 net = slim.max_pool2d(net, [2, 2], scope='pool4')
 
-                net = slim.repeat(net, 2, slim.conv2d, 512,
+                net = slim.repeat(net, 3, slim.conv2d, 512,
                                   [3, 3], scope='conv5')
                 # net = slim.max_pool2d(net, [2, 2], scope='pool5')
 
@@ -51,26 +51,26 @@ def restore(sess, global_vars):
     reader = NewCheckpointReader(
         os.path.join(os.getcwd(), 'model/vgg_16.ckpt'))
 
-    # no batchnorm from vgg_16 pretrained model
-    restored_var_names = [name + ':0'
-                          for name in reader.get_variable_to_dtype_map().keys()
-                          if re.match('^.*weights$', name)]  # skip conv's biases
+    # restore similars of global_vars and pretrained_vars, not include logits and global_step
+    pretrained_var_names = [name + ':0'
+                            for name in reader.get_variable_to_dtype_map().keys()
+                            if not re.match('logits', name) and name != 'global_step']
 
-    restored_vars = [var for var in global_vars
-                     if var.name in restored_var_names]
+    restoring_vars = [var for var in global_vars
+                      if var.name in pretrained_var_names]
 
-    restored_var_names = [var.name[:-2] for var in restored_vars]
+    restoring_var_names = [var.name[:-2] for var in restoring_vars]
 
     value_ph = tf.placeholder(dtype=tf.float32)
 
-    for i in range(len(restored_var_names)):
-        sess.run(tf.assign(restored_vars[i], value_ph),
-                 feed_dict={value_ph: reader.get_tensor(restored_var_names[i])})
+    for i in range(len(restoring_var_names)):
+        sess.run(tf.assign(restoring_vars[i], value_ph),
+                 feed_dict={value_ph: reader.get_tensor(restoring_var_names[i])})
 
-    initialized_vars = [var for var in global_vars
-                        if not var in restored_vars]
+    initializing_vars = [var for var in global_vars
+                         if not var in restoring_vars]
 
-    sess.run(tf.variables_initializer(initialized_vars))
+    sess.run(tf.variables_initializer(initializing_vars))
 
 
 def preprocess(images):
