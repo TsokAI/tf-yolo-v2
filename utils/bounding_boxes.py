@@ -6,8 +6,8 @@ from config import LABEL_NAMES
 
 def draw_targets(image, box_pred, cls_inds, scores):
     for i in range(box_pred.shape[0]):
-        p1 = (box_pred[i, 1], box_pred[i, 0])
-        p2 = (box_pred[i, 3], box_pred[i, 2])
+        p1 = (box_pred[i, 0], box_pred[i, 1])
+        p2 = (box_pred[i, 2], box_pred[i, 3])
 
         cv2.rectangle(image, p1, p2, (0, 0, 255), 2)
         cv2.putText(image, LABEL_NAMES[cls_inds[i]] + '_{:.3f}'.format(scores[i]),

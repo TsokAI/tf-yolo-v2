@@ -1,7 +1,7 @@
 # https://github.com/tensorflow/models/blob/master/research/slim/nets/resnet_v2.py
 # https://github.com/tensorflow/models/blob/master/research/slim/preprocessing/inception_preprocessing.py
-# resnet_v2_50 from slim
 from __future__ import absolute_import, division, print_function
+import sys
 import os
 import re
 import tensorflow as tf
@@ -10,7 +10,7 @@ from nets.resnet_utils import subsample, conv2d_same
 
 slim = tf.contrib.slim
 
-endpoint = 'resnet_v2_50'  # modified resnet50 with 3 blocks
+endpoint = 'resnet_v2_50'
 
 
 @ slim.add_arg_scope
@@ -101,6 +101,10 @@ def forward(inputs, num_outputs, is_training=True, scope=None):
                 net = slim.batch_norm(
                     net, activation_fn=tf.nn.relu, scope='postnorm')
 
+                # addition block
+                net = slim.conv2d(
+                    net, 512, [3, 3], scope='add0')  # 1024 -> 512
+
                 # logits block
                 net = slim.conv2d(net, num_outputs, [1, 1],
                                   activation_fn=None, normalizer_fn=None,
@@ -118,7 +122,7 @@ def restore(sess, global_vars):
     # restore similars of global_vars and pretrained_vars, not include logits and global_step
     pretrained_var_names = [name + ':0'
                             for name in reader.get_variable_to_dtype_map().keys()
-                            if not re.match('logits', name) and name != 'global_step']
+                            if not re.search('logits', name) and name != 'global_step' and not re.search('postnorm', name)]
 
     restoring_vars = [var for var in global_vars
                       if var.name in pretrained_var_names]
@@ -128,8 +132,12 @@ def restore(sess, global_vars):
     value_ph = tf.placeholder(dtype=tf.float32)
 
     for i in range(len(restoring_var_names)):
+        print('loc:@' + restoring_var_names[i])
+        sys.stdout.write("\033[F")
         sess.run(tf.assign(restoring_vars[i], value_ph),
                  feed_dict={value_ph: reader.get_tensor(restoring_var_names[i])})
+
+    print()
 
     initializing_vars = [var for var in global_vars
                          if not var in restoring_vars]

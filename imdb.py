@@ -25,20 +25,15 @@ def load_image(anno_dir, images_dir, xml):
     for box in root.findall('object'):
         classes.append(label2cls[box.find('name').text])
         bndbox = box.find('bndbox')
-        # using numpy's axis (not pascal/voc)
-        # X-----------> y
-        # |
-        # |
-        # V x
-        boxes.append([float(bndbox.find('ymin').text),
-                      float(bndbox.find('xmin').text),
-                      float(bndbox.find('ymax').text),
-                      float(bndbox.find('xmax').text)])
+        boxes.append([float(bndbox.find('xmin').text),
+                      float(bndbox.find('ymin').text),
+                      float(bndbox.find('xmax').text),
+                      float(bndbox.find('ymax').text)])
 
     # scale box coords to target size
     boxes = np.array(boxes, dtype=np.float32)
-    boxes[:, 0::2] *= cfg.INP_SIZE / image_height
-    boxes[:, 1::2] *= cfg.INP_SIZE / image_width
+    boxes[:, 0::2] *= cfg.INP_SIZE / image_width
+    boxes[:, 1::2] *= cfg.INP_SIZE / image_height
 
     classes = np.array(classes, dtype=np.int8)
 
@@ -50,7 +45,7 @@ def load_image(anno_dir, images_dir, xml):
 
     if np.random.randint(0, 2):  # randomly left-right flipping
         image = cv2.flip(image, 1)
-        boxes[:, 1::2] = cfg.INP_SIZE - boxes[:, 1::2]
+        boxes[:, 0::2] = cfg.INP_SIZE - boxes[:, 0::2]
 
     return image, boxes, classes
 

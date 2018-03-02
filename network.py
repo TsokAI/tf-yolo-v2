@@ -2,15 +2,12 @@ from __future__ import absolute_import, division, print_function
 import os
 import tensorflow as tf
 import config as cfg
-from nets.inception import endpoint, forward, restore, preprocess
+from nets.resnet import endpoint, forward, restore, preprocess
 from layers.generate_anchors import generate_anchors
 from layers.proposal_target_layer import proposal_target_layer
 from layers.proposal_layer import proposal_layer
 
 slim = tf.contrib.slim
-
-xla = tf.ConfigProto()
-xla.graph_options.optimizer_options.global_jit_level = tf.OptimizerOptions.ON_1
 
 ckpt_dir = os.path.join(os.getcwd(), 'ckpt', cfg.DATASET + endpoint)
 if not os.path.exists(ckpt_dir):
@@ -19,7 +16,7 @@ if not os.path.exists(ckpt_dir):
 
 class Network:
     def __init__(self, is_training=True, lr=None):
-        self.sess = tf.Session(config=xla)  # new session with xla/jit
+        self.sess = tf.Session()
 
         # [batch_size, inp_size, inp_size, channels]
         self.images_ph = tf.placeholder(
@@ -29,7 +26,7 @@ class Network:
         self.anchors = tf.Variable(generate_anchors(
             cfg.INP_SIZE), trainable=False, name='anchors')
 
-        logits = forward(preprocess(self.images_ph),
+        logits = forward(inputs=preprocess(self.images_ph),
                          num_outputs=cfg.NUM_ANCHORS_CELL*(5+cfg.NUM_CLASSES),
                          is_training=is_training,
                          scope=endpoint)

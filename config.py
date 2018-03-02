@@ -7,7 +7,7 @@ LABEL_NAMES = ['aeroplane', 'bicycle', 'bird', 'boat', 'bottle',
 
 NUM_CLASSES = len(LABEL_NAMES)
 
-INP_SIZE = 416  # image 416x416 RGB
+INP_SIZE = 448  # rgb images
 
 NUM_ANCHORS_CELL = 5
 
@@ -22,7 +22,7 @@ OBJECT_SCALE = 5
 NO_OBJECT_SCALE = 1
 
 # inference
-COEF_THRESH = 0.05  # detector confidence
+COEF_THRESH = 0.7  # detector confidence
 
 PRE_NMS_TOP_N = 300  # keep top n before apply nms
 

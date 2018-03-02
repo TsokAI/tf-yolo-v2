@@ -25,11 +25,7 @@ def compute_targets_image(feed_data, anchors, ls):
     iou_target = np.zeros((hw, num_anchors, 1), dtype=np.float32)
     iou_mask = np.zeros((hw, num_anchors, 1), dtype=np.float32)
     bbox_target = np.zeros((hw, num_anchors, 4), dtype=np.float32)
-    bbox_mask = np.zeros((hw, num_anchors, 1), dtype=np.float32) + 0.01
-
-    # warm-up regression
-    bbox_target[:, :, 0:2] = 0.5
-    bbox_target[:, :, 2:4] = 1.0
+    bbox_mask = np.zeros((hw, num_anchors, 1), dtype=np.float32)
 
     # compute overlaps btw prediction and groundtruth boxes
     box_pred = np.reshape(box_pred, [-1, 4])
@@ -48,7 +44,7 @@ def compute_targets_image(feed_data, anchors, ls):
 
     cx = (gt_boxes[:, 0] + gt_boxes[:, 2]) * 0.5 / feat_stride
     cy = (gt_boxes[:, 1] + gt_boxes[:, 3]) * 0.5 / feat_stride
-    cell_inds = np.floor(cx) * ls + np.floor(cy)
+    cell_inds = np.floor(cy) * ls + np.floor(cx)
     cell_inds = cell_inds.astype(np.int)
 
     # transform to bbox

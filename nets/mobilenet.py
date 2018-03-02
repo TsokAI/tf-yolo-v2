@@ -1,7 +1,7 @@
 # https://github.com/tensorflow/models/blob/master/research/slim/nets/mobilenet_v1.py
 # https://www.tensorflow.org/tutorials/image_retraining#other_model_architectures
-# MobilenetV1 from slim
 from __future__ import absolute_import, division, print_function
+import sys
 import os
 import re
 import tensorflow as tf
@@ -77,7 +77,7 @@ def restore(sess, global_vars):
     # restore similars of global_vars and pretrained_vars, not include logits and global_step
     pretrained_var_names = [name + ':0'
                             for name in reader.get_variable_to_dtype_map().keys()
-                            if not re.match('logits', name) and name != 'global_step']
+                            if not re.search('logits', name) and name != 'global_step']
 
     restoring_vars = [var for var in global_vars
                       if var.name in pretrained_var_names]
@@ -87,8 +87,12 @@ def restore(sess, global_vars):
     value_ph = tf.placeholder(dtype=tf.float32)
 
     for i in range(len(restoring_var_names)):
+        print('loc:@' + restoring_var_names[i])
+        sys.stdout.write("\033[F")
         sess.run(tf.assign(restoring_vars[i], value_ph),
                  feed_dict={value_ph: reader.get_tensor(restoring_var_names[i])})
+
+    print()
 
     initializing_vars = [var for var in global_vars
                          if not var in restoring_vars]

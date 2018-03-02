@@ -33,14 +33,14 @@ cdef bbox_transform_inv_op(
         for col in range(W):
             ind = row * W + col
             for a in range(num_anchors):
-                cx = bbox_pred[ind, a, 0] + row
-                cy = bbox_pred[ind, a, 1] + col
-                bh = anchors[a, 0] * bbox_pred[ind, a, 2] * 0.5
-                bw = anchors[a, 1] * bbox_pred[ind, a, 3] * 0.5
-                box_pred[ind, a, 0] = (cx - bh) / H
-                box_pred[ind, a, 1] = (cy - bw) / W
-                box_pred[ind, a, 2] = (cx + bh) / H
-                box_pred[ind, a, 3] = (cy + bw) / W
+                cx = bbox_pred[ind, a, 0] + col
+                cy = bbox_pred[ind, a, 1] + row
+                bw = anchors[a, 0] * bbox_pred[ind, a, 2] * 0.5
+                bh = anchors[a, 1] * bbox_pred[ind, a, 3] * 0.5
+                box_pred[ind, a, 0] = (cx - bw) / W
+                box_pred[ind, a, 1] = (cy - bh) / H
+                box_pred[ind, a, 2] = (cx + bw) / W
+                box_pred[ind, a, 3] = (cy + bh) / H
 
     return box_pred
 
@@ -54,10 +54,10 @@ cdef clip_boxes_op(
     cdef unsigned int n
 
     for n in range(N):
-        boxes[n, 0] = max(min(boxes[n, 0], H - 1), 0)
-        boxes[n, 1] = max(min(boxes[n, 1], W - 1), 0)
-        boxes[n, 2] = max(min(boxes[n, 2], H - 1), 0)
-        boxes[n, 3] = max(min(boxes[n, 3], W - 1), 0)
+        boxes[n, 0] = max(min(boxes[n, 0], W - 1), 0)
+        boxes[n, 1] = max(min(boxes[n, 1], H - 1), 0)
+        boxes[n, 2] = max(min(boxes[n, 2], W - 1), 0)
+        boxes[n, 3] = max(min(boxes[n, 3], H - 1), 0)
 
     return boxes
 

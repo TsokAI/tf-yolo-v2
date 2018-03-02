@@ -31,7 +31,7 @@ cdef box_overlaps_op(
     cdef unsigned int N = boxes.shape[0]
     cdef unsigned int K = query_boxes.shape[0]
     cdef np.ndarray[DTYPE_t, ndim=2] overlaps = np.zeros((N, K), dtype=DTYPE)
-    cdef DTYPE_t ih, iw
+    cdef DTYPE_t iw, ih
     cdef DTYPE_t box_area, inter_area, ua
     cdef unsigned int n, k
     for n in range(N):
@@ -40,17 +40,17 @@ cdef box_overlaps_op(
             (boxes[n, 3] - boxes[n, 1] + 1)
         )
         for k in range(K):
-            ih = (
+            iw = (
                 min(boxes[n, 2], query_boxes[k, 2]) -
                 max(boxes[n, 0], query_boxes[k, 0]) + 1
             )
-            if ih > 0:
-                iw = (
+            if iw > 0:
+                ih = (
                     min(boxes[n, 3], query_boxes[k, 3]) -
                     max(boxes[n, 1], query_boxes[k, 1]) + 1
                 )
-                if iw > 0:
-                    inter_area = ih * iw
+                if ih > 0:
+                    inter_area = iw * ih
                     ua = float(
                         (query_boxes[k, 2] - query_boxes[k, 0] + 1) *
                         (query_boxes[k, 3] - query_boxes[k, 1] + 1) +
@@ -78,7 +78,7 @@ cdef box_intersections_op(
     cdef unsigned int N = boxes.shape[0]
     cdef unsigned int K = query_boxes.shape[0]
     cdef np.ndarray[DTYPE_t, ndim=2] overlaps = np.zeros((N, K), dtype=DTYPE)
-    cdef DTYPE_t ih, iw
+    cdef DTYPE_t iw, ih
     cdef DTYPE_t box_area
     cdef unsigned int n, k
     for n in range(N):
@@ -87,17 +87,17 @@ cdef box_intersections_op(
             (boxes[n, 3] - boxes[n, 1] + 1)
         )
         for k in range(K):
-            ih = (
+            iw = (
                 min(boxes[n, 2], query_boxes[k, 2]) -
                 max(boxes[n, 0], query_boxes[k, 0]) + 1
             )
-            if ih > 0:
-                iw = (
+            if iw > 0:
+                ih = (
                     min(boxes[n, 3], query_boxes[k, 3]) -
                     max(boxes[n, 1], query_boxes[k, 1]) + 1
                 )
-                if iw > 0:
-                    overlaps[n, k] = (ih * iw) / box_area
+                if ih > 0:
+                    overlaps[n, k] = (iw * ih) / box_area
     return overlaps
 
 @cython.boundscheck(False)
@@ -110,7 +110,7 @@ cdef anchor_overlaps_op(
     ----------
     Parameters
     ----------
-    anchors: (N, 2) ndarray of float in order (height, width)
+    anchors: (N, 2) ndarray of float in order (width, height)
     query_boxes: (K, 4) ndarray of float in order (x1, y1, x2, y2)
     Returns
     -------
@@ -119,18 +119,18 @@ cdef anchor_overlaps_op(
     cdef unsigned int N = anchors.shape[0]
     cdef unsigned int K = query_boxes.shape[0]
     cdef np.ndarray[DTYPE_t, ndim=2] overlaps = np.zeros((N, K), dtype=DTYPE)
-    cdef DTYPE_t ih, iw, boxh, boxw
+    cdef DTYPE_t iw, ih, boxw, boxh
     cdef DTYPE_t anchor_area, inter_area
     cdef unsigned int n, k
     for n in range(N):
         anchor_area = anchors[n, 0] * anchors[n, 1]
         for k in range(K):
-            boxh = query_boxes[k, 2] - query_boxes[k, 0] + 1
-            boxw = query_boxes[k, 3] - query_boxes[k, 1] + 1
-            ih = min(anchors[n, 0], boxh)
-            iw = min(anchors[n, 1], boxw)
-            inter_area = ih * iw
-            overlaps[n, k] = inter_area / (anchor_area + boxh * boxw - inter_area)
+            boxw = query_boxes[k, 2] - query_boxes[k, 0] + 1
+            boxh = query_boxes[k, 3] - query_boxes[k, 1] + 1
+            iw = min(anchors[n, 0], boxw)
+            ih = min(anchors[n, 1], boxh)
+            inter_area = iw * ih
+            overlaps[n, k] = inter_area / (anchor_area + boxw * boxh - inter_area)
     return overlaps
 
 def box_overlaps(
