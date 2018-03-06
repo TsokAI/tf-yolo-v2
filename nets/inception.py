@@ -380,4 +380,7 @@ def restore(sess, global_vars):
 def preprocess(images):
     # using keras preprocessing, not using distortion
     # rescale images to [-1, 1]
-    return (images/255. - 0.5)*2.
+    images = tf.image.convert_image_dtype(images, dtype=tf.float32)
+    images = tf.multiply(tf.subtract(images, 0.5), 2.0)
+
+    return images

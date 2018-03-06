@@ -103,4 +103,7 @@ def restore(sess, global_vars):
 
 def preprocess(images):
     # images: 4d tensor [batch_size, height, width, channels]
-    return (images - 128.) / 128.
+    images = tf.image.convert_image_dtype(images, dtype=tf.float32)
+    images = tf.multiply(tf.subtract(images, 0.5), 2.0)
+
+    return images

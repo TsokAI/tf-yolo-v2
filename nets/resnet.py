@@ -145,9 +145,6 @@ def restore(sess, global_vars):
 def preprocess(images):
     # rescale images to [-1, 1]
     # resnet_v2 using inception preprocess (keras, no distortion)
-    if images.dtype != tf.float32:
-        images = tf.image.convert_image_dtype(images, dtype=tf.float32)
-
     images = tf.image.convert_image_dtype(images, dtype=tf.float32)
     images = tf.multiply(tf.subtract(images, 0.5), 2.0)
 

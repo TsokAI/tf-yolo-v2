@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 import os
 import tensorflow as tf
 import config as cfg
-from nets.vgg import endpoint, forward, restore, preprocess
+from nets.resnet import endpoint, forward, restore, preprocess
 from layers.generate_anchors import generate_anchors
 from layers.proposal_target_layer import proposal_target_layer
 from layers.proposal_layer import proposal_layer
@@ -18,11 +18,11 @@ class Network:
     def __init__(self, is_training=True, learning_rate=None):
         self.sess = tf.Session()
 
-        self.warmup = True
-
         # [batch_size, inp_size, inp_size, channels]
         self.images_ph = tf.placeholder(
             tf.uint8, shape=[None, cfg.INP_SIZE, cfg.INP_SIZE, 3])
+
+        self.warmup = tf.placeholder(tf.bool)
 
         # generate anchors for inp_size
         self.anchors = tf.Variable(generate_anchors(
@@ -46,8 +46,7 @@ class Network:
         # sig(to) for iou (predition-groundtruth) prediction
         iou_pred = tf.sigmoid(logits[:, :, :, 4:5])
 
-        cls_pred = logits[:, :, :, 5:]
-        # cls_pred = tf.nn.softmax(logits[:, :, :, 5:])
+        cls_pred = tf.nn.softmax(logits[:, :, :, 5:])
 
         if is_training:
             if learning_rate is None:
@@ -66,25 +65,16 @@ class Network:
                                                                                                        [tf.float32] * 7,
                                                                                                        name='proposal_target_layer')
 
+            RSUM = tf.losses.Reduction.SUM
+
             self.bbox_loss = tf.losses.mean_squared_error(
-                bbox_target*bbox_mask, bbox_pred*bbox_mask, scope='bbox_loss') / num_boxes
+                bbox_target*bbox_mask, bbox_pred*bbox_mask, scope='bbox_loss', reduction=RSUM) / num_boxes
 
             self.iou_loss = tf.losses.mean_squared_error(
-                iou_target*iou_mask, iou_pred*iou_mask, scope='iou_loss') / num_boxes
+                iou_target*iou_mask, iou_pred*iou_mask, scope='iou_loss', reduction=RSUM) / num_boxes
 
-            # self.cls_loss = tf.losses.mean_squared_error(
-            #     cls_target*cls_mask, cls_pred*cls_mask, scope='cls_loss') / num_boxes
-
-            loss_shape = [-1, ls*ls*cfg.NUM_ANCHORS_CELL, cfg.NUM_CLASSES]
-
-            cls_pred = tf.reshape(cls_pred, loss_shape)
-
-            cls_target = tf.reshape(cls_target, loss_shape)
-
-            cls_mask = tf.reshape(cls_mask, loss_shape[:-1])
-
-            self.cls_loss = tf.losses.softmax_cross_entropy(
-                onehot_labels=cls_target, logits=cls_pred, weights=cls_mask) / num_boxes
+            self.cls_loss = tf.losses.mean_squared_error(
+                cls_target*cls_mask, cls_pred*cls_mask, scope='cls_loss', reduction=RSUM) / num_boxes
 
             self.total_loss = self.bbox_loss + self.iou_loss + self.cls_loss
 
@@ -92,12 +82,14 @@ class Network:
             self.global_step = tf.Variable(
                 0, trainable=False, name='global_step')
 
+            self.learning_rate = tf.train.exponential_decay(
+                learning_rate, self.global_step, decay_steps=100000, decay_rate=0.9, staircase=True)
+
             self.optimizer = tf.train.AdamOptimizer(
-                learning_rate).minimize(self.total_loss, self.global_step)
+                self.learning_rate).minimize(self.total_loss, self.global_step)
 
         else:
             # testing, batch_size is 1
-            cls_pred = tf.nn.softmax(cls_pred)
 
             self.box_pred, self.cls_inds, self.scores = tf.py_func(proposal_layer,
                                                                    [bbox_pred[0], iou_pred[0], cls_pred[0],
@@ -120,14 +112,6 @@ class Network:
             # from slim pretrained model
             restore(self.sess, tf.global_variables())
 
-    def refresh_opt(self, learning_rate):
-        print('refresh training')
-
-        self.warmup = False
-
-        self.optimizer = tf.train.AdamOptimizer(
-            learning_rate).minimize(self.total_loss, self.global_step)
-
     def save_ckpt(self, step):
         self.saver.save(self.sess,
                         save_path=os.path.join(ckpt_dir, endpoint),
@@ -135,13 +119,14 @@ class Network:
 
         print('saved checkpoint at step {}'.format(step))
 
-    def fit(self, images, gt_boxes, gt_cls):  # training on batch
+    def fit(self, images, gt_boxes, gt_cls, warmup=False):  # training on batch
         step, bbox_loss, iou_loss, cls_loss, _ = self.sess.run([self.global_step,
                                                                 self.bbox_loss, self.iou_loss, self.cls_loss,
                                                                 self.optimizer],
                                                                feed_dict={self.images_ph: images,
                                                                           self.gt_boxes_ph: gt_boxes,
-                                                                          self.gt_cls_ph: gt_cls})
+                                                                          self.gt_cls_ph: gt_cls,
+                                                                          self.warmup: warmup})
 
         return step, bbox_loss, iou_loss, cls_loss
 

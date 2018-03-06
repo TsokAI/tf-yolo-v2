@@ -77,10 +77,9 @@ def compute_targets_image(feed_data, anchors, ls, warmup=False):
 
         a = anchor_inds[i]
 
-        iou_truth = box_ious[cell_i, a, i]
         iou_mask[cell_i, a, :] = cfg.OBJECT_SCALE * \
-            (iou_truth - iou_pred[cell_i, a, :])
-        iou_target[cell_i, a, :] = iou_truth
+            (1 - iou_pred[cell_i, a, :])
+        iou_target[cell_i, a, :] = box_ious[cell_i, a, i]
 
         bbox_mask[cell_i, a, :] = cfg.BBOX_SCALE
         box_target[i, 2:4] /= anchors[a]
