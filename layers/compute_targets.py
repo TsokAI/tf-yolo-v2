@@ -6,7 +6,7 @@ from utils.bbox import box_overlaps, anchor_overlaps
 import config as cfg
 
 
-def compute_targets_image(feed_data, anchors, ls):
+def compute_targets_image(feed_data, anchors, ls, warmup=False):
     bbox_pred, iou_pred, gt_boxes, gt_cls = feed_data
 
     # filter ignored groundtruth boxes
@@ -28,6 +28,12 @@ def compute_targets_image(feed_data, anchors, ls):
     iou_mask = np.zeros((hw, num_anchors, 1), dtype=np.float32)
     bbox_target = np.zeros((hw, num_anchors, 4), dtype=np.float32)
     bbox_mask = np.zeros((hw, num_anchors, 1), dtype=np.float32)
+
+    if warmup:  # match prediction boxes to anchors
+        bbox_target[:, :, 0:2] = 0.5  # sig(tx), sig(ty) = 0.5
+        bbox_target[:, :, 2:4] = 1.0  # exp(tw), exp(th) = 1.0
+
+        bbox_mask += cfg.BBOX_SCALE  # regression all prediction boxes
 
     # compute overlaps btw prediction and groundtruth boxes
     box_pred = np.reshape(box_pred, [-1, 4])
@@ -71,9 +77,10 @@ def compute_targets_image(feed_data, anchors, ls):
 
         a = anchor_inds[i]
 
+        iou_truth = box_ious[cell_i, a, i]
         iou_mask[cell_i, a, :] = cfg.OBJECT_SCALE * \
-            (1 - iou_pred[cell_i, a, :])
-        iou_target[cell_i, a, :] = box_ious[cell_i, a, i]
+            (iou_truth - iou_pred[cell_i, a, :])
+        iou_target[cell_i, a, :] = iou_truth
 
         bbox_mask[cell_i, a, :] = cfg.BBOX_SCALE
         box_target[i, 2:4] /= anchors[a]

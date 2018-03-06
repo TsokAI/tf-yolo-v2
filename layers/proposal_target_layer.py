@@ -7,7 +7,7 @@ from layers.compute_targets import compute_targets_image
 pool = Pool(processes=4)
 
 
-def proposal_target_layer(bbox_pred, iou_pred, gt_boxes, gt_cls, anchors, ls):
+def proposal_target_layer(bbox_pred, iou_pred, gt_boxes, gt_cls, anchors, ls, warmup=False):
     """Compute targets, masks for batch
     Parameters:
         bbox_pred: np.ndarray [batch_size, hw, num_anchors_cell, 4]
@@ -19,7 +19,7 @@ def proposal_target_layer(bbox_pred, iou_pred, gt_boxes, gt_cls, anchors, ls):
     Return:
         groundtruths, masks: np.ndarray [batch_size, hw, num_anchors_cell, codesize]
     """
-    targets = pool.map(partial(compute_targets_image, anchors=anchors, ls=ls),
+    targets = pool.map(partial(compute_targets_image, anchors=anchors, ls=ls, warmup=warmup),
                        ((bbox_pred[i], iou_pred[i], gt_boxes[i], gt_cls[i])
                         for i in range(gt_boxes.shape[0])))
 

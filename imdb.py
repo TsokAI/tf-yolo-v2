@@ -66,6 +66,9 @@ class Imdb:
     def get_size(self):
         return self.size
 
+    def set_batch_size(self, batch_size):
+        self.batch_size = batch_size
+
     def next_batch(self):
         np.random.shuffle(self.anno)
 

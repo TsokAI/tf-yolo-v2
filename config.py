@@ -26,7 +26,7 @@ OBJECT_SCALE = 5
 NO_OBJECT_SCALE = 1
 
 # inference
-COEF_THRESH = 0.15  # detector confidence
+COEF_THRESH = 0.3  # detector confidence
 
 PRE_NMS_TOP_N = 300  # keep top n before apply nms
 

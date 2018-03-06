@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 import os
 import tensorflow as tf
 import config as cfg
-from nets.resnet import endpoint, forward, restore, preprocess
+from nets.vgg import endpoint, forward, restore, preprocess
 from layers.generate_anchors import generate_anchors
 from layers.proposal_target_layer import proposal_target_layer
 from layers.proposal_layer import proposal_layer
@@ -15,8 +15,10 @@ if not os.path.exists(ckpt_dir):
 
 
 class Network:
-    def __init__(self, is_training=True, lr=None):
+    def __init__(self, is_training=True, learning_rate=None):
         self.sess = tf.Session()
+
+        self.warmup = True
 
         # [batch_size, inp_size, inp_size, channels]
         self.images_ph = tf.placeholder(
@@ -48,7 +50,7 @@ class Network:
         # cls_pred = tf.nn.softmax(logits[:, :, :, 5:])
 
         if is_training:
-            if lr is None:
+            if learning_rate is None:
                 raise ValueError('learning rate is not none in training')
 
             # training placeholders
@@ -60,31 +62,38 @@ class Network:
             bbox_target, bbox_mask, iou_target, iou_mask, cls_target, cls_mask, num_boxes = tf.py_func(proposal_target_layer,
                                                                                                        [bbox_pred, iou_pred,
                                                                                                         self.gt_boxes_ph, self.gt_cls_ph,
-                                                                                                        self.anchors, ls],
+                                                                                                        self.anchors, ls, self.warmup],
                                                                                                        [tf.float32] * 7,
                                                                                                        name='proposal_target_layer')
 
-            RSUM = tf.losses.Reduction.SUM  # remove effect of zeros
-
             self.bbox_loss = tf.losses.mean_squared_error(
-                bbox_target*bbox_mask, bbox_pred*bbox_mask, scope='bbox_loss', reduction=RSUM) / num_boxes
+                bbox_target*bbox_mask, bbox_pred*bbox_mask, scope='bbox_loss') / num_boxes
 
             self.iou_loss = tf.losses.mean_squared_error(
-                iou_target*iou_mask, iou_pred*iou_mask, scope='iou_loss', reduction=RSUM) / num_boxes
+                iou_target*iou_mask, iou_pred*iou_mask, scope='iou_loss') / num_boxes
 
             # self.cls_loss = tf.losses.mean_squared_error(
-            #     cls_target*cls_mask, cls_pred*cls_mask, scope='cls_loss', reduction=RSUM) / num_boxes
-            cls_target = tf.cast(tf.argmax(cls_pred, axis=3), tf.int32)
+            #     cls_target*cls_mask, cls_pred*cls_mask, scope='cls_loss') / num_boxes
 
-            self.cls_loss = tf.losses.sparse_softmax_cross_entropy(
-                cls_target, cls_pred, cls_mask)
+            loss_shape = [-1, ls*ls*cfg.NUM_ANCHORS_CELL, cfg.NUM_CLASSES]
+
+            cls_pred = tf.reshape(cls_pred, loss_shape)
+
+            cls_target = tf.reshape(cls_target, loss_shape)
+
+            cls_mask = tf.reshape(cls_mask, loss_shape[:-1])
+
+            self.cls_loss = tf.losses.softmax_cross_entropy(
+                onehot_labels=cls_target, logits=cls_pred, weights=cls_mask) / num_boxes
+
+            self.total_loss = self.bbox_loss + self.iou_loss + self.cls_loss
 
             # training
             self.global_step = tf.Variable(
                 0, trainable=False, name='global_step')
 
-            self.optimizer = tf.train.AdamOptimizer(learning_rate=lr).minimize(loss=(
-                self.bbox_loss + self.iou_loss + self.cls_loss), global_step=self.global_step)
+            self.optimizer = tf.train.AdamOptimizer(
+                learning_rate).minimize(self.total_loss, self.global_step)
 
         else:
             # testing, batch_size is 1
@@ -110,6 +119,14 @@ class Network:
             print('init variables')
             # from slim pretrained model
             restore(self.sess, tf.global_variables())
+
+    def refresh_opt(self, learning_rate):
+        print('refresh training')
+
+        self.warmup = False
+
+        self.optimizer = tf.train.AdamOptimizer(
+            learning_rate).minimize(self.total_loss, self.global_step)
 
     def save_ckpt(self, step):
         self.saver.save(self.sess,
