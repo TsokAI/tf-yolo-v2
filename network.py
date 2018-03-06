@@ -20,7 +20,7 @@ class Network:
 
         # [batch_size, inp_size, inp_size, channels]
         self.images_ph = tf.placeholder(
-            tf.float32, shape=[None, cfg.INP_SIZE, cfg.INP_SIZE, 3])
+            tf.uint8, shape=[None, cfg.INP_SIZE, cfg.INP_SIZE, 3])
 
         # generate anchors for inp_size
         self.anchors = tf.Variable(generate_anchors(
@@ -37,8 +37,9 @@ class Network:
             logits, shape=[-1, ls*ls, cfg.NUM_ANCHORS_CELL, 5 + cfg.NUM_CLASSES])
 
         # [sig(tx), sig(ty), exp(th), exp(tw)] for bbox prediction
-        bbox_pred = tf.concat(
-            [tf.sigmoid(logits[:, :, :, 0:2]), tf.exp(logits[:, :, :, 2:4])], axis=3)
+        xy_pred = tf.sigmoid(logits[:, :, :, 0:2])
+        wh_pred = tf.exp(logits[:, :, :, 2:4])
+        bbox_pred = tf.concat([xy_pred, wh_pred], axis=3)
 
         # sig(to) for iou (predition-groundtruth) prediction
         iou_pred = tf.sigmoid(logits[:, :, :, 4:5])
@@ -56,16 +57,14 @@ class Network:
             self.gt_cls_ph = tf.placeholder(tf.int8)
 
             # compute targets regression
-            bbox_target, bbox_mask, iou_target, iou_mask, cls_target, cls_mask = tf.py_func(proposal_target_layer,
-                                                                                            [bbox_pred, iou_pred,
-                                                                                             self.gt_boxes_ph, self.gt_cls_ph,
-                                                                                             self.anchors, ls],
-                                                                                            [tf.float32] * 6,
-                                                                                            name='proposal_target_layer')
+            bbox_target, bbox_mask, iou_target, iou_mask, cls_target, cls_mask, num_boxes = tf.py_func(proposal_target_layer,
+                                                                                                       [bbox_pred, iou_pred,
+                                                                                                        self.gt_boxes_ph, self.gt_cls_ph,
+                                                                                                        self.anchors, ls],
+                                                                                                       [tf.float32] * 7,
+                                                                                                       name='proposal_target_layer')
 
             RSUM = tf.losses.Reduction.SUM  # remove effect of zeros
-
-            num_boxes = tf.reduce_sum(cls_mask) / cfg.CLS_SCALE
 
             self.bbox_loss = tf.losses.mean_squared_error(
                 bbox_target*bbox_mask, bbox_pred*bbox_mask, scope='bbox_loss', reduction=RSUM) / num_boxes
@@ -75,15 +74,10 @@ class Network:
 
             # self.cls_loss = tf.losses.mean_squared_error(
             #     cls_target*cls_mask, cls_pred*cls_mask, scope='cls_loss', reduction=RSUM) / num_boxes
+            cls_target = tf.cast(tf.argmax(cls_pred, axis=3), tf.int32)
 
-            cls_target = tf.reshape(cls_target, [-1, cfg.NUM_CLASSES])
-
-            cls_pred = tf.reshape(cls_pred, [-1, cfg.NUM_CLASSES])
-
-            cls_mask = tf.reshape(cls_mask, [-1, 1])
-
-            self.cls_loss = tf.losses.softmax_cross_entropy(
-                cls_target*cls_mask, cls_pred*cls_mask, scope='cls_loss', reduction=RSUM) / num_boxes
+            self.cls_loss = tf.losses.sparse_softmax_cross_entropy(
+                cls_target, cls_pred, cls_mask)
 
             # training
             self.global_step = tf.Variable(
@@ -140,7 +134,3 @@ class Network:
                                                    feed_dict={self.images_ph: images})
 
         return box_pred, cls_inds, scores
-
-
-if __name__ == '__main__':
-    Network(is_training=True, lr=1e-3)

@@ -365,10 +365,11 @@ def restore(sess, global_vars):
     for i in range(len(restoring_var_names)):
         print('loc:@' + restoring_var_names[i])
         sys.stdout.write("\033[F")
+        sys.stdout.write("\033[K")
         sess.run(tf.assign(restoring_vars[i], value_ph),
                  feed_dict={value_ph: reader.get_tensor(restoring_var_names[i])})
 
-    print()
+    print('restoring done')
 
     initializing_vars = [var for var in global_vars
                          if not var in restoring_vars]

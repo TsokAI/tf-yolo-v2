@@ -95,15 +95,11 @@ def forward(inputs, num_outputs, is_training=True, scope=None):
                 net = resnet_v2_block(
                     net, base_depth=128, num_units=4, stride=2, scope='block2')
                 net = resnet_v2_block(
-                    net, base_depth=256, num_units=6, stride=2, scope='block3')
+                    net, base_depth=256, num_units=6, stride=1, scope='block3')
                 # net = resnet_v2_block(
                 #     net, base_depth=512, num_units=3, stride=1, scope='block4')
                 net = slim.batch_norm(
-                    net, activation_fn=tf.nn.relu, scope='postnorm')
-
-                # addition block
-                net = slim.conv2d(
-                    net, 512, [3, 3], scope='add0')  # 1024 -> 512
+                    net, activation_fn=tf.nn.relu, scope='logitsnorm')
 
                 # logits block
                 net = slim.conv2d(net, num_outputs, [1, 1],
@@ -122,7 +118,7 @@ def restore(sess, global_vars):
     # restore similars of global_vars and pretrained_vars, not include logits and global_step
     pretrained_var_names = [name + ':0'
                             for name in reader.get_variable_to_dtype_map().keys()
-                            if not re.search('logits', name) and name != 'global_step' and not re.search('postnorm', name)]
+                            if not re.search('logits', name) and name != 'global_step']
 
     restoring_vars = [var for var in global_vars
                       if var.name in pretrained_var_names]
@@ -134,10 +130,11 @@ def restore(sess, global_vars):
     for i in range(len(restoring_var_names)):
         print('loc:@' + restoring_var_names[i])
         sys.stdout.write("\033[F")
+        sys.stdout.write("\033[K")
         sess.run(tf.assign(restoring_vars[i], value_ph),
                  feed_dict={value_ph: reader.get_tensor(restoring_var_names[i])})
 
-    print()
+    print('restoring done')
 
     initializing_vars = [var for var in global_vars
                          if not var in restoring_vars]
@@ -148,4 +145,10 @@ def restore(sess, global_vars):
 def preprocess(images):
     # rescale images to [-1, 1]
     # resnet_v2 using inception preprocess (keras, no distortion)
-    return (images/255. - 0.5)*2.
+    if images.dtype != tf.float32:
+        images = tf.image.convert_image_dtype(images, dtype=tf.float32)
+
+    images = tf.image.convert_image_dtype(images, dtype=tf.float32)
+    images = tf.multiply(tf.subtract(images, 0.5), 2.0)
+
+    return images

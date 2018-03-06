@@ -54,11 +54,13 @@ def proposal_layer(bbox_pred, iou_pred, cls_pred, anchors, ls):
     keep = np.where(keep > 0)
 
     box_pred = box_pred[keep]
-    cls_inds = cls_inds[keep].astype(np.int8)
+    cls_inds = cls_inds[keep]
     scores = scores[keep][:, 0]
 
     # clip boxes inside image
     box_pred = clip_boxes(np.ascontiguousarray(box_pred, dtype=np.float32),
                           cfg.INP_SIZE, cfg.INP_SIZE)
+
+    cls_inds = cls_inds.astype(np.int8)
 
     return box_pred, cls_inds, scores

@@ -30,4 +30,6 @@ def proposal_target_layer(bbox_pred, iou_pred, gt_boxes, gt_cls, anchors, ls):
     cls_target = np.stack(t[4] for t in targets)
     cls_mask = np.stack(t[5] for t in targets)
 
-    return bbox_target, bbox_mask, iou_target, iou_mask, cls_target, cls_mask
+    num_boxes = np.sum(np.stack(t[6] for t in targets)).astype(np.float32)
+
+    return bbox_target, bbox_mask, iou_target, iou_mask, cls_target, cls_mask, num_boxes

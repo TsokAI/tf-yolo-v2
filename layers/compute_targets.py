@@ -11,6 +11,8 @@ def compute_targets_image(feed_data, anchors, ls):
 
     # filter ignored groundtruth boxes
     gt_inds = np.where(gt_cls >= 0)[0]
+    num_boxes = len(gt_inds)
+
     gt_boxes = gt_boxes[gt_inds]
     gt_cls = gt_cls[gt_inds]
 
@@ -45,7 +47,7 @@ def compute_targets_image(feed_data, anchors, ls):
     cx = (gt_boxes[:, 0] + gt_boxes[:, 2]) * 0.5 / feat_stride
     cy = (gt_boxes[:, 1] + gt_boxes[:, 3]) * 0.5 / feat_stride
     cell_inds = np.floor(cy) * ls + np.floor(cx)
-    cell_inds = cell_inds.astype(np.int)
+    cell_inds = cell_inds.astype(np.int32)
 
     # transform to bbox
     box_target = np.empty(gt_boxes.shape, dtype=np.float32)
@@ -80,4 +82,4 @@ def compute_targets_image(feed_data, anchors, ls):
         cls_mask[cell_i, a, :] = cfg.CLS_SCALE
         cls_target[cell_i, a, gt_cls[i]] = 1
 
-    return bbox_target, bbox_mask, iou_target, iou_mask, cls_target, cls_mask
+    return bbox_target, bbox_mask, iou_target, iou_mask, cls_target, cls_mask, num_boxes

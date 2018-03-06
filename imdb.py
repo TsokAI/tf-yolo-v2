@@ -43,9 +43,9 @@ def load_image(anno_dir, images_dir, xml):
     image = cv2.resize(image, (cfg.INP_SIZE, cfg.INP_SIZE))
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-    if np.random.randint(0, 2):  # randomly left-right flipping
-        image = cv2.flip(image, 1)
-        boxes[:, 0::2] = cfg.INP_SIZE - boxes[:, 0::2]
+    # if np.random.randint(0, 2):  # randomly left-right flipping
+    #     image = cv2.flip(image, 1)
+    #     boxes[:, 0::2] = cfg.INP_SIZE - boxes[:, 0::2]
 
     return image, boxes, classes
 
@@ -82,7 +82,7 @@ class Imdb:
                 batch_boxes.append(boxes)
                 batch_classes.append(classes)
 
-            batch_images = np.asarray(batch_images, dtype=np.float32)
+            batch_images = np.asarray(batch_images, dtype=np.uint8)
 
             # add padding, list np.ndarray -> tf.tensor
             num_images = batch_images.shape[0]
@@ -90,8 +90,8 @@ class Imdb:
 
             batch_boxes_pad = np.zeros(
                 (num_images, max_boxes_im, 4), dtype=np.float32)
-            batch_classes_pad = np.full(
-                (num_images, max_boxes_im), -1, dtype=np.int8)  # -1 mean dontcare, removed in compute targets
+            batch_classes_pad = np.zeros(
+                (num_images, max_boxes_im), dtype=np.int8) - 1  # -1 mean dontcare, removed in compute targets
 
             for i in range(num_images):
                 num_boxes_im = len(batch_classes[i])

@@ -26,15 +26,15 @@ def forward(inputs, num_outputs, is_training=True, scope=None):
                                   [3, 3], scope='conv2')
                 net = slim.max_pool2d(net, [2, 2], scope='pool2')
 
-                net = slim.repeat(net, 3, slim.conv2d, 256,
+                net = slim.repeat(net, 2, slim.conv2d, 256,
                                   [3, 3], scope='conv3')
                 net = slim.max_pool2d(net, [2, 2], scope='pool3')
 
-                net = slim.repeat(net, 3, slim.conv2d, 512,
+                net = slim.repeat(net, 2, slim.conv2d, 512,
                                   [3, 3], scope='conv4')
                 net = slim.max_pool2d(net, [2, 2], scope='pool4')
 
-                net = slim.repeat(net, 3, slim.conv2d, 512,
+                net = slim.repeat(net, 2, slim.conv2d, 512,
                                   [3, 3], scope='conv5')
                 # net = slim.max_pool2d(net, [2, 2], scope='pool5')
 
@@ -66,10 +66,11 @@ def restore(sess, global_vars):
     for i in range(len(restoring_var_names)):
         print('loc:@' + restoring_var_names[i])
         sys.stdout.write("\033[F")
+        sys.stdout.write("\033[K")
         sess.run(tf.assign(restoring_vars[i], value_ph),
                  feed_dict={value_ph: reader.get_tensor(restoring_var_names[i])})
 
-    print()
+    print('restoring done')
 
     initializing_vars = [var for var in global_vars
                          if not var in restoring_vars]

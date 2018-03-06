@@ -7,13 +7,13 @@ from imdb import Imdb
 from network import Network
 
 data_dir = os.path.join(os.getcwd(), 'data')
-anno_dir = os.path.join(data_dir, 'annotation')
+anno_dir = os.path.join(data_dir, 'validation')
 images_dir = os.path.join(data_dir, 'images')
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--num_epochs', type=int, default=1)
-parser.add_argument('--batch_size', type=int, default=1)
-parser.add_argument('--learn_rate', type=float, default=1e-3)
+parser.add_argument('--num_epochs', type=int, default=5000)
+parser.add_argument('--batch_size', type=int, default=12)
+parser.add_argument('--learn_rate', type=float, default=1e-5)
 args = parser.parse_args()
 
 imdb = Imdb(anno_dir, images_dir,
@@ -32,7 +32,7 @@ for epoch in range(1, args.num_epochs + 1):
     for images, gt_boxes, gt_cls in imdb.next_batch():
         step, bbox_loss, iou_loss, cls_loss = net.fit(images, gt_boxes, gt_cls)
 
-        if step % 100 == 0:
+        if step % 1 == 0:
             print('step: {0} - bbox_loss: {1} - iou_loss: {2} - cls_loss: {3}'.format(
                 step, bbox_loss, iou_loss, cls_loss))
 

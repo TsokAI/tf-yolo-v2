@@ -5,9 +5,13 @@ LABEL_NAMES = ['aeroplane', 'bicycle', 'bird', 'boat', 'bottle',
                'dog', 'horse', 'motorbike', 'person', 'pottedplant',
                'sheep', 'sofa', 'train', 'tvmonitor']
 
+# DATASET = 'detrac'
+
+# LABEL_NAMES = ['car', 'bus', 'van', 'others']
+
 NUM_CLASSES = len(LABEL_NAMES)
 
-INP_SIZE = 448  # rgb images
+INP_SIZE = 368  # rgb images
 
 NUM_ANCHORS_CELL = 5
 
@@ -22,7 +26,7 @@ OBJECT_SCALE = 5
 NO_OBJECT_SCALE = 1
 
 # inference
-COEF_THRESH = 0.7  # detector confidence
+COEF_THRESH = 0.15  # detector confidence
 
 PRE_NMS_TOP_N = 300  # keep top n before apply nms
 

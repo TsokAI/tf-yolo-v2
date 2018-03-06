@@ -5,6 +5,12 @@ cimport numpy as np
 DTYPE = np.float32
 ctypedef np.float32_t DTYPE_t
 
+cdef inline DTYPE_t max_c(DTYPE_t a, DTYPE_t b):
+    return a if a >= b else b
+
+cdef inline DTYPE_t min_c(DTYPE_t a, DTYPE_t b):
+    return a if a <= b else b
+
 @cython.boundscheck(False)
 @cython.wraparound(False)
 cdef bbox_transform_inv_op(
@@ -44,6 +50,13 @@ cdef bbox_transform_inv_op(
 
     return box_pred
 
+def bbox_transform_inv(
+        np.ndarray[DTYPE_t, ndim=3] bbox_pred,
+        np.ndarray[DTYPE_t, ndim=2] anchors, 
+        int H, int W):
+    
+    return bbox_transform_inv_op(bbox_pred, anchors, H, W)
+
 @cython.boundscheck(False)
 @cython.wraparound(False)
 cdef clip_boxes_op(
@@ -54,19 +67,12 @@ cdef clip_boxes_op(
     cdef unsigned int n
 
     for n in range(N):
-        boxes[n, 0] = max(min(boxes[n, 0], W - 1), 0)
-        boxes[n, 1] = max(min(boxes[n, 1], H - 1), 0)
-        boxes[n, 2] = max(min(boxes[n, 2], W - 1), 0)
-        boxes[n, 3] = max(min(boxes[n, 3], H - 1), 0)
+        boxes[n, 0] = max_c(min_c(boxes[n, 0], W), 0)
+        boxes[n, 1] = max_c(min_c(boxes[n, 1], H), 0)
+        boxes[n, 2] = max_c(min_c(boxes[n, 2], W), 0)
+        boxes[n, 3] = max_c(min_c(boxes[n, 3], H), 0)
 
     return boxes
-
-def bbox_transform_inv(
-        np.ndarray[DTYPE_t, ndim=3] bbox_pred,
-        np.ndarray[DTYPE_t, ndim=2] anchors, 
-        int H, int W):
-    
-    return bbox_transform_inv_op(bbox_pred, anchors, H, W)
 
 def clip_boxes(
     np.ndarray[DTYPE_t, ndim=2] boxes,
