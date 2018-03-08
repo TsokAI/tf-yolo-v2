@@ -46,7 +46,7 @@ class Network:
         # sig(to) for iou (predition-groundtruth) prediction
         iou_pred = tf.sigmoid(logits[:, :, :, 4:5])
 
-        cls_pred = tf.nn.softmax(logits[:, :, :, 5:])
+        cls_pred = logits[:, :, :, 5:]
 
         if is_training:
             if learning_rate is None:
@@ -58,47 +58,57 @@ class Network:
             self.gt_cls_ph = tf.placeholder(tf.int8)
 
             # compute targets regression
-            bbox_target, bbox_mask, iou_target, iou_mask, cls_target, cls_mask, num_boxes = tf.py_func(proposal_target_layer,
-                                                                                                       [bbox_pred, iou_pred,
-                                                                                                        self.gt_boxes_ph, self.gt_cls_ph,
-                                                                                                        self.anchors, ls, self.warmup],
-                                                                                                       [tf.float32] * 7,
-                                                                                                       name='proposal_target_layer')
+            bbox_target, bbox_mask, iou_target, iou_mask, cls_target, cls_mask, num_boxes = tf.py_func(
+                proposal_target_layer,
+                [bbox_pred, iou_pred,
+                 self.gt_boxes_ph, self.gt_cls_ph, self.anchors, ls, self.warmup],
+                [tf.float32] * 7,
+                name='proposal_target_layer')
 
             RSUM = tf.losses.Reduction.SUM
 
             self.bbox_loss = tf.losses.mean_squared_error(
                 bbox_target*bbox_mask, bbox_pred*bbox_mask, scope='bbox_loss', reduction=RSUM) / num_boxes
+            tf.summary.scalar('bbox_loss', self.bbox_loss)
 
             self.iou_loss = tf.losses.mean_squared_error(
                 iou_target*iou_mask, iou_pred*iou_mask, scope='iou_loss', reduction=RSUM) / num_boxes
+            tf.summary.scalar('iou_loss', self.iou_loss)
 
-            self.cls_loss = tf.losses.mean_squared_error(
+            # TODO: replace with sigmoid_focal_cross_entropy (model/objects-detection)
+            self.cls_loss = tf.losses.softmax_cross_entropy(
                 cls_target*cls_mask, cls_pred*cls_mask, scope='cls_loss', reduction=RSUM) / num_boxes
+            tf.summary.scalar('cls_loss', self.cls_loss)
 
             self.total_loss = self.bbox_loss + self.iou_loss + self.cls_loss
+            tf.summary.scalar('total_loss', self.total_loss)
 
             # training
             self.global_step = tf.Variable(
                 0, trainable=False, name='global_step')
 
-            self.learning_rate = tf.train.exponential_decay(
-                learning_rate, self.global_step, decay_steps=100000, decay_rate=0.9, staircase=True)
+            # self.learning_rate = tf.train.exponential_decay(
+            #     learning_rate, self.global_step, decay_steps=50000, decay_rate=0.9, staircase=True)
 
             self.optimizer = tf.train.AdamOptimizer(
-                self.learning_rate).minimize(self.total_loss, self.global_step)
+                learning_rate).minimize(self.total_loss, self.global_step)
 
         else:
             # testing, batch_size is 1
+            cls_pred = tf.nn.softmax(cls_pred)
 
-            self.box_pred, self.cls_inds, self.scores = tf.py_func(proposal_layer,
-                                                                   [bbox_pred[0], iou_pred[0], cls_pred[0],
-                                                                    self.anchors, ls],
-                                                                   [tf.float32, tf.int8,
-                                                                       tf.float32],
-                                                                   name='proposal_layer')
+            self.box_pred, self.cls_inds, self.scores = tf.py_func(
+                proposal_layer,
+                [bbox_pred[0], iou_pred[0], cls_pred[0], self.anchors, ls],
+                [tf.float32, tf.int8, tf.float32],
+                name='proposal_layer')
 
         self.saver = tf.train.Saver(max_to_keep=1)
+
+        # summaries
+        self.merged = tf.summary.merge_all()
+
+        self.writer = tf.summary.FileWriter('./logs', self.sess.graph)
 
         # restore with ckpt/pretrain or init
         try:
@@ -112,23 +122,22 @@ class Network:
             # from slim pretrained model
             restore(self.sess, tf.global_variables())
 
-    def save_ckpt(self, step):
+    def save_ckpt(self):
         self.saver.save(self.sess,
                         save_path=os.path.join(ckpt_dir, endpoint),
                         global_step=self.global_step)
 
-        print('saved checkpoint at step {}'.format(step))
+        print('new checkpoint saved')
 
     def fit(self, images, gt_boxes, gt_cls, warmup=False):  # training on batch
-        step, bbox_loss, iou_loss, cls_loss, _ = self.sess.run([self.global_step,
-                                                                self.bbox_loss, self.iou_loss, self.cls_loss,
-                                                                self.optimizer],
-                                                               feed_dict={self.images_ph: images,
-                                                                          self.gt_boxes_ph: gt_boxes,
-                                                                          self.gt_cls_ph: gt_cls,
-                                                                          self.warmup: warmup})
+        summary, step, _ = self.sess.run([self.merged, self.global_step,
+                                          self.optimizer],
+                                         feed_dict={self.images_ph: images,
+                                                    self.gt_boxes_ph: gt_boxes,
+                                                    self.gt_cls_ph: gt_cls,
+                                                    self.warmup: warmup})
 
-        return step, bbox_loss, iou_loss, cls_loss
+        self.writer.add_summary(summary, step)
 
     def predict(self, images):
         # batch_size must be 1

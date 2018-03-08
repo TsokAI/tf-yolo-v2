@@ -51,7 +51,7 @@ def proposal_layer(bbox_pred, iou_pred, cls_pred, anchors, ls):
 
         keep[inds[keep_in_cls]] = 1
 
-    keep = np.where(keep > 0)
+    keep = np.where(keep > 0)[0]
 
     box_pred = box_pred[keep]
     cls_inds = cls_inds[keep]

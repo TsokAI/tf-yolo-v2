@@ -95,11 +95,11 @@ def forward(inputs, num_outputs, is_training=True, scope=None):
                 net = resnet_v2_block(
                     net, base_depth=128, num_units=4, stride=2, scope='block2')
                 net = resnet_v2_block(
-                    net, base_depth=256, num_units=6, stride=1, scope='block3')
-                # net = resnet_v2_block(
-                #     net, base_depth=512, num_units=3, stride=1, scope='block4')
+                    net, base_depth=256, num_units=6, stride=2, scope='block3')
+                net = resnet_v2_block(
+                    net, base_depth=512, num_units=3, stride=1, scope='block4')
                 net = slim.batch_norm(
-                    net, activation_fn=tf.nn.relu, scope='logitsnorm')
+                    net, activation_fn=tf.nn.relu, scope='postnorm')
 
                 # logits block
                 net = slim.conv2d(net, num_outputs, [1, 1],
