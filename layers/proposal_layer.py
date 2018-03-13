@@ -15,9 +15,9 @@ def nms_detection(dets, thresh):
     return cpu_nms(dets, thresh)
 
 
-def proposal_layer(bbox_pred, iou_pred, cls_pred, anchors, ls):
+def proposal_layer(bbox_pred, iou_pred, cls_pred, anchors, logitsize):
     box_pred = bbox_transform_inv(np.ascontiguousarray(bbox_pred, dtype=np.float32), np.ascontiguousarray(
-        anchors, dtype=np.float32), ls, ls) * cfg.INP_SIZE
+        anchors, dtype=np.float32), logitsize, logitsize) * cfg.INP_SIZE
 
     box_pred = np.reshape(box_pred, [-1, 4])
 

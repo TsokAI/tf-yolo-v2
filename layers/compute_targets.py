@@ -6,7 +6,7 @@ from utils.bbox import box_overlaps, anchor_overlaps
 import config as cfg
 
 
-def compute_targets_image(feed_data, anchors, ls, warmup=False):
+def compute_targets_image(feed_data, anchors, logitsize, warmup=False):
     bbox_pred, iou_pred, gt_boxes, gt_cls = feed_data
 
     # filter ignored groundtruth boxes
@@ -18,7 +18,7 @@ def compute_targets_image(feed_data, anchors, ls, warmup=False):
 
     # transform bbox and rescale to inp_size
     box_pred = bbox_transform_inv(np.ascontiguousarray(bbox_pred, dtype=np.float32), np.ascontiguousarray(
-        anchors, dtype=np.float32), ls, ls) * cfg.INP_SIZE
+        anchors, dtype=np.float32), logitsize, logitsize) * cfg.INP_SIZE
 
     hw, num_anchors, _ = box_pred.shape
 
@@ -48,11 +48,11 @@ def compute_targets_image(feed_data, anchors, ls, warmup=False):
     iou_mask[neg_box_inds] = cfg.NO_OBJECT_SCALE * (0 - iou_pred[neg_box_inds])
 
     # locate groundtruth cells, compute bbox target
-    feat_stride = cfg.INP_SIZE / ls
+    feat_stride = cfg.INP_SIZE / logitsize
 
     cx = (gt_boxes[:, 0] + gt_boxes[:, 2]) * 0.5 / feat_stride
     cy = (gt_boxes[:, 1] + gt_boxes[:, 3]) * 0.5 / feat_stride
-    cell_inds = np.floor(cy) * ls + np.floor(cx)
+    cell_inds = np.floor(cy) * logitsize + np.floor(cx)
     cell_inds = cell_inds.astype(np.int32)
 
     # transform to bbox
@@ -77,9 +77,11 @@ def compute_targets_image(feed_data, anchors, ls, warmup=False):
 
         a = anchor_inds[i]
 
+        # rescore iou
+        iou_truth = box_ious[cell_i, a, i]
         iou_mask[cell_i, a, :] = cfg.OBJECT_SCALE * \
-            (1 - iou_pred[cell_i, a, :])
-        iou_target[cell_i, a, :] = box_ious[cell_i, a, i]
+            (iou_truth - iou_pred[cell_i, a, :])
+        iou_target[cell_i, a, :] = iou_truth
 
         bbox_mask[cell_i, a, :] = cfg.BBOX_SCALE
         box_target[i, 2:4] /= anchors[a]

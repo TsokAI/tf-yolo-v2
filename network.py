@@ -9,12 +9,12 @@ from layers.proposal_layer import proposal_layer
 
 slim = tf.contrib.slim
 
-ckpt_dir = os.path.join(os.getcwd(), 'ckpt', cfg.DATASET + endpoint)
+ckpt_dir = os.path.join(os.getcwd(), 'ckpt')
 if not os.path.exists(ckpt_dir):
     os.makedirs(ckpt_dir)
 
 
-class Network:
+class Network(object):
     def __init__(self, is_training=True, learning_rate=None):
         self.sess = tf.Session()
 
@@ -33,10 +33,10 @@ class Network:
                          is_training=is_training,
                          scope=endpoint)
 
-        ls = logits.get_shape().as_list()[1]  # NHWC tensor, logits'size
+        logitsize = logits.get_shape().as_list()[1]  # NHWC tensor
 
         logits = tf.reshape(
-            logits, shape=[-1, ls*ls, cfg.NUM_ANCHORS_CELL, 5 + cfg.NUM_CLASSES])
+            logits, shape=[-1, logitsize*logitsize, cfg.NUM_ANCHORS_CELL, 5 + cfg.NUM_CLASSES])
 
         # [sig(tx), sig(ty), exp(th), exp(tw)] for bbox prediction
         xy_pred = tf.sigmoid(logits[:, :, :, 0:2])
@@ -49,9 +49,6 @@ class Network:
         cls_pred = logits[:, :, :, 5:]
 
         if is_training:
-            if learning_rate is None:
-                raise ValueError('learning rate is not none in training')
-
             # training placeholders
             self.gt_boxes_ph = tf.placeholder(tf.float32)
 
@@ -61,12 +58,13 @@ class Network:
             bbox_target, bbox_mask, iou_target, iou_mask, cls_target, cls_mask, num_boxes = tf.py_func(
                 proposal_target_layer,
                 [bbox_pred, iou_pred,
-                 self.gt_boxes_ph, self.gt_cls_ph, self.anchors, ls, self.warmup],
+                 self.gt_boxes_ph, self.gt_cls_ph, self.anchors, logitsize, self.warmup],
                 [tf.float32] * 7,
                 name='proposal_target_layer')
 
             RSUM = tf.losses.Reduction.SUM
 
+            # TODO: replace with smooth_l1 loss [model/objects-detection]
             self.bbox_loss = tf.losses.mean_squared_error(
                 bbox_target*bbox_mask, bbox_pred*bbox_mask, scope='bbox_loss', reduction=RSUM) / num_boxes
             tf.summary.scalar('bbox_loss', self.bbox_loss)
@@ -75,7 +73,7 @@ class Network:
                 iou_target*iou_mask, iou_pred*iou_mask, scope='iou_loss', reduction=RSUM) / num_boxes
             tf.summary.scalar('iou_loss', self.iou_loss)
 
-            # TODO: replace with sigmoid_focal_cross_entropy (model/objects-detection)
+            # TODO: replace with softmax_focal_cross_entropy [model/objects-detection] [fbrs/detectron]
             self.cls_loss = tf.losses.softmax_cross_entropy(
                 cls_target*cls_mask, cls_pred*cls_mask, scope='cls_loss', reduction=RSUM) / num_boxes
             tf.summary.scalar('cls_loss', self.cls_loss)
@@ -87,11 +85,11 @@ class Network:
             self.global_step = tf.Variable(
                 0, trainable=False, name='global_step')
 
-            # self.learning_rate = tf.train.exponential_decay(
-            #     learning_rate, self.global_step, decay_steps=50000, decay_rate=0.9, staircase=True)
+            self.learning_rate = tf.train.exponential_decay(
+                learning_rate, self.global_step, 1500, 0.9, staircase=True)  # 6500
 
-            self.optimizer = tf.train.AdamOptimizer(
-                learning_rate).minimize(self.total_loss, self.global_step)
+            self.optimizer = tf.train.MomentumOptimizer(
+                self.learning_rate, 0.9).minimize(self.total_loss, self.global_step)
 
         else:
             # testing, batch_size is 1
@@ -99,7 +97,7 @@ class Network:
 
             self.box_pred, self.cls_inds, self.scores = tf.py_func(
                 proposal_layer,
-                [bbox_pred[0], iou_pred[0], cls_pred[0], self.anchors, ls],
+                [bbox_pred[0], iou_pred[0], cls_pred[0], self.anchors, logitsize],
                 [tf.float32, tf.int8, tf.float32],
                 name='proposal_layer')
 
@@ -108,7 +106,8 @@ class Network:
         # summaries
         self.merged = tf.summary.merge_all()
 
-        self.writer = tf.summary.FileWriter('./logs', self.sess.graph)
+        self.writer = tf.summary.FileWriter(
+            os.path.join(os.getcwd(), 'logs'), self.sess.graph)
 
         # restore with ckpt/pretrain or init
         try:
