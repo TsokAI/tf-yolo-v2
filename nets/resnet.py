@@ -10,8 +10,6 @@ from nets.resnet_utils import subsample, conv2d_same
 
 slim = tf.contrib.slim
 
-endpoint = 'resnet_v2_50'
-
 
 @ slim.add_arg_scope
 def bottleneck(inputs, depth, depth_bottleneck, stride, rate=1, scope=None):
@@ -78,8 +76,8 @@ def resnet_v2_block(inputs, base_depth, num_units, stride, scope=None):
     return net
 
 
-def forward(inputs, num_outputs, is_training=True, scope=None):
-    with tf.variable_scope(scope, 'resnet_v2_50', [inputs], reuse=tf.AUTO_REUSE):
+def forward(inputs, is_training=True, scope=None):
+    with tf.variable_scope(scope, 'resnet_v2_50', [inputs]):
         with slim.arg_scope([slim.conv2d],
                             normalizer_fn=slim.batch_norm):
             with slim.arg_scope([slim.batch_norm], is_training=is_training):
@@ -100,11 +98,6 @@ def forward(inputs, num_outputs, is_training=True, scope=None):
                     net, base_depth=512, num_units=3, stride=1, scope='block4')
                 net = slim.batch_norm(
                     net, activation_fn=tf.nn.relu, scope='postnorm')
-
-                # logits block
-                net = slim.conv2d(net, num_outputs, [1, 1],
-                                  activation_fn=None, normalizer_fn=None,
-                                  scope='logits')
 
     return net
 

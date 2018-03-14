@@ -1,3 +1,5 @@
+DATASET = 'voc'
+
 LABEL_NAMES = ['aeroplane', 'bicycle', 'bird', 'boat', 'bottle',
                'bus', 'car', 'cat', 'chair', 'cow', 'diningtable',
                'dog', 'horse', 'motorbike', 'person', 'pottedplant',
@@ -22,8 +24,8 @@ OBJECT_SCALE = 5
 NO_OBJECT_SCALE = 1
 
 # inference
-COEF_THRESH = 0.  # detector confidence
+COEF_THRESH = 0.3  # detector confidence
 
-PRE_NMS_TOP_N = 100  # keep top n before apply nms
+PRE_NMS_TOP_N = 300  # keep top n before apply nms
 
 NMS_THRESH = 0.45

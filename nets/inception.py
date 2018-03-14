@@ -10,14 +10,12 @@ from tensorflow.python.pywrap_tensorflow import NewCheckpointReader
 
 slim = tf.contrib.slim
 
-endpoint = 'InceptionV3'
-
 
 def depth(d, min_depth=16, depth_mul=1.0):
     return max(int(d * depth_mul), min_depth)
 
 
-def forward(inputs, num_outputs, is_training=True, scope=None):
+def forward(inputs, is_training=True, scope=None):
     with tf.variable_scope(scope, 'InceptionV3', [inputs], reuse=tf.AUTO_REUSE):
         with slim.arg_scope([slim.conv2d],
                             normalizer_fn=slim.batch_norm):
@@ -336,10 +334,6 @@ def forward(inputs, num_outputs, is_training=True, scope=None):
                                 branch_3, depth(192), [1, 1], scope='Conv2d_0b_1x1')
                         net = tf.concat(
                             axis=3, values=[branch_0, branch_1, branch_2, branch_3])
-
-                net = slim.conv2d(net, num_outputs, [1, 1],
-                                  activation_fn=None, normalizer_fn=None,
-                                  scope='logits')
 
     return net
 

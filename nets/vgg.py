@@ -9,12 +9,10 @@ from tensorflow.python.pywrap_tensorflow import NewCheckpointReader
 
 slim = tf.contrib.slim
 
-endpoint = 'vgg_16'
-
 
 def forward(inputs, num_outputs, is_training=True, scope=None):
     # modified (add batchnorm) from slim pretrained model
-    with tf.variable_scope(scope, 'vgg_16', [inputs], reuse=tf.AUTO_REUSE):
+    with tf.variable_scope(scope, 'vgg_16', [inputs]):
         with slim.arg_scope([slim.conv2d],
                             normalizer_fn=slim.batch_norm):
             with slim.arg_scope([slim.batch_norm], is_training=is_training):
@@ -37,10 +35,6 @@ def forward(inputs, num_outputs, is_training=True, scope=None):
                 net = slim.repeat(net, 2, slim.conv2d, 512,
                                   [3, 3], scope='conv5')
                 # net = slim.max_pool2d(net, [2, 2], scope='pool5')
-
-                # logits block
-                net = slim.conv2d(net, num_outputs, [1, 1],
-                                  activation_fn=None, normalizer_fn=None, scope='logits')
 
     return net
 

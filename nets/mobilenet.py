@@ -9,8 +9,6 @@ from tensorflow.python.pywrap_tensorflow import NewCheckpointReader
 
 slim = tf.contrib.slim
 
-endpoint = 'MobilenetV1'
-
 
 def depthsep_conv2d(inputs, num_outputs, kernel, stride, scope=None):
     net = slim.separable_conv2d(inputs, None, kernel,
@@ -25,7 +23,7 @@ def depthsep_conv2d(inputs, num_outputs, kernel, stride, scope=None):
     return net
 
 
-def forward(inputs, num_outputs, is_training=True, scope=None):
+def forward(inputs, is_training=True, scope=None):
     with tf.variable_scope(scope, 'MobilenetV1', [inputs], reuse=tf.AUTO_REUSE):
         with slim.arg_scope([slim.conv2d, slim.separable_conv2d],
                             normalizer_fn=slim.batch_norm):
@@ -61,10 +59,6 @@ def forward(inputs, num_outputs, is_training=True, scope=None):
                                       stride=2, scope='Conv2d_12')
                 net = depthsep_conv2d(net, 1024, [3, 3],
                                       stride=1, scope='Conv2d_13')
-
-                # logits block
-                net = slim.conv2d(net, num_outputs, [1, 1],
-                                  activation_fn=None, normalizer_fn=None, scope='logits')
 
     return net
 

@@ -1,17 +1,37 @@
 from __future__ import absolute_import, division, print_function
 import os
+import numpy as np
 import tensorflow as tf
 import config as cfg
-from nets.resnet import endpoint, forward, restore, preprocess
+import nets.resnet as net
+from multiprocessing import Pool
+from functools import partial
 from layers.generate_anchors import generate_anchors
 from layers.proposal_target_layer import proposal_target_layer
 from layers.proposal_layer import proposal_layer
 
 slim = tf.contrib.slim
+pool = Pool(processes=4)
 
 ckpt_dir = os.path.join(os.getcwd(), 'ckpt')
 if not os.path.exists(ckpt_dir):
     os.makedirs(ckpt_dir)
+
+
+def build_targets(bbox_pred, iou_pred, gt_boxes, gt_cls, anchors, logitsize, warmup):
+    targets = pool.map(partial(proposal_target_layer, anchors=anchors, logitsize=logitsize, warmup=warmup),
+                       ((bbox_pred[i], iou_pred[i], gt_boxes[i], gt_cls[i])
+                        for i in range(gt_boxes.shape[0])))
+
+    bbox_target = np.stack(t[0] for t in targets)
+    bbox_mask = np.stack(t[1] for t in targets)
+    iou_target = np.stack(t[2] for t in targets)
+    iou_mask = np.stack(t[3] for t in targets)
+    cls_target = np.stack(t[4] for t in targets)
+    cls_mask = np.stack(t[5] for t in targets)
+    num_boxes = np.sum(np.stack(t[6] for t in targets)).astype(np.float32)
+
+    return bbox_target, bbox_mask, iou_target, iou_mask, cls_target, cls_mask, num_boxes
 
 
 class Network(object):
@@ -28,10 +48,11 @@ class Network(object):
         self.anchors = tf.Variable(generate_anchors(
             cfg.INP_SIZE), trainable=False, name='anchors')
 
-        logits = forward(inputs=preprocess(self.images_ph),
-                         num_outputs=cfg.NUM_ANCHORS_CELL*(5+cfg.NUM_CLASSES),
-                         is_training=is_training,
-                         scope=endpoint)
+        # TODO: freeze layers from pretrained model
+        logits = net.forward(net.preprocess(self.images_ph), is_training)
+
+        logits = slim.conv2d(logits, cfg.NUM_ANCHORS_CELL*(5+cfg.NUM_CLASSES),
+                             [1, 1], activation_fn=None, scope='logits')
 
         logitsize = logits.get_shape().as_list()[1]  # NHWC tensor
 
@@ -56,7 +77,7 @@ class Network(object):
 
             # compute targets regression
             bbox_target, bbox_mask, iou_target, iou_mask, cls_target, cls_mask, num_boxes = tf.py_func(
-                proposal_target_layer,
+                build_targets,
                 [bbox_pred, iou_pred,
                  self.gt_boxes_ph, self.gt_cls_ph, self.anchors, logitsize, self.warmup],
                 [tf.float32] * 7,
@@ -119,11 +140,11 @@ class Network(object):
         except:
             print('init variables')
             # from slim pretrained model
-            restore(self.sess, tf.global_variables())
+            net.restore(self.sess, tf.global_variables())
 
     def save_ckpt(self):
         self.saver.save(self.sess,
-                        save_path=os.path.join(ckpt_dir, endpoint),
+                        save_path=os.path.join(ckpt_dir, cfg.DATASET),
                         global_step=self.global_step)
 
         print('new checkpoint saved')
