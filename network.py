@@ -3,10 +3,9 @@ import os
 import numpy as np
 import tensorflow as tf
 import config as cfg
-import nets.resnet as net
+import nets.vgg as net
 from multiprocessing import Pool
 from functools import partial
-from layers.generate_anchors import generate_anchors
 from layers.proposal_target_layer import proposal_target_layer
 from layers.proposal_layer import proposal_layer
 
@@ -45,13 +44,13 @@ class Network(object):
         self.warmup = tf.placeholder(tf.bool)
 
         # generate anchors for inp_size
-        self.anchors = tf.Variable(generate_anchors(
-            cfg.INP_SIZE), trainable=False, name='anchors')
+        self.anchors = tf.Variable([[1.08, 1.19], [3.42, 4.41], [6.63, 11.38], [9.42, 5.11], [
+                                   16.62, 10.52]], trainable=False, name='anchors', dtype=tf.float32)
 
         # TODO: freeze layers from pretrained model
         logits = net.forward(net.preprocess(self.images_ph), is_training)
 
-        logits = slim.conv2d(logits, cfg.NUM_ANCHORS_CELL*(5+cfg.NUM_CLASSES),
+        logits = slim.conv2d(logits, (cfg.NUM_ANCHORS_CELL*(5+cfg.NUM_CLASSES)),
                              [1, 1], activation_fn=None, scope='logits')
 
         logitsize = logits.get_shape().as_list()[1]  # NHWC tensor
@@ -107,7 +106,7 @@ class Network(object):
                 0, trainable=False, name='global_step')
 
             self.learning_rate = tf.train.exponential_decay(
-                learning_rate, self.global_step, 1500, 0.9, staircase=True)  # 6500
+                learning_rate, self.global_step, 5000, 0.75, staircase=True)
 
             self.optimizer = tf.train.MomentumOptimizer(
                 self.learning_rate, 0.9).minimize(self.total_loss, self.global_step)

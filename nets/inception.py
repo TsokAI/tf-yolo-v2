@@ -347,7 +347,7 @@ def restore(sess, global_vars):
     # restore similars of global_vars and pretrained_vars, not include logits and global_step
     pretrained_var_names = [name + ':0'
                             for name in reader.get_variable_to_dtype_map().keys()
-                            if not re.search('logits', name) and name != 'global_step']
+                            if name != 'global_step']
 
     restoring_vars = [var for var in global_vars
                       if var.name in pretrained_var_names]

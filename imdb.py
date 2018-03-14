@@ -43,9 +43,9 @@ def load_image(anno_dir, images_dir, xml):
     image = cv2.resize(image, (cfg.INP_SIZE, cfg.INP_SIZE))
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-    # if np.random.randint(0, 2):  # randomly left-right flipping
-    #     image = cv2.flip(image, 1)
-    #     boxes[:, 0::2] = cfg.INP_SIZE - boxes[:, 0::2]
+    if np.random.randint(0, 2):  # randomly left-right flipping
+        image = cv2.flip(image, 1)
+        boxes[:, 0::2] = cfg.INP_SIZE - boxes[:, 0::2]
 
     return image, boxes, classes
 
@@ -65,9 +65,6 @@ class Imdb:
 
     def get_size(self):
         return self.size
-
-    def set_batch_size(self, batch_size):
-        self.batch_size = batch_size
 
     def next_batch(self):
         np.random.shuffle(self.anno)

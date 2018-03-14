@@ -34,7 +34,6 @@ def forward(inputs, num_outputs, is_training=True, scope=None):
 
                 net = slim.repeat(net, 2, slim.conv2d, 512,
                                   [3, 3], scope='conv5')
-                # net = slim.max_pool2d(net, [2, 2], scope='pool5')
 
     return net
 
@@ -48,7 +47,7 @@ def restore(sess, global_vars):
     # restore similars of global_vars and pretrained_vars, not include logits and global_step
     pretrained_var_names = [name + ':0'
                             for name in reader.get_variable_to_dtype_map().keys()
-                            if not re.search('logits', name) and name != 'global_step']
+                            if name != 'global_step']
 
     restoring_vars = [var for var in global_vars
                       if var.name in pretrained_var_names]
@@ -75,4 +74,6 @@ def restore(sess, global_vars):
 def preprocess(images):
     # images: 4d tensor [batch_size, height, width, channels]
     # rgb_means subtraction on each image
-    return tf.to_float(images) - [123.68, 116.78, 103.94]
+    images = tf.cast(images, tf.float32) - [123.68, 116.78, 103.94]
+
+    return images

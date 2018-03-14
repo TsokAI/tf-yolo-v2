@@ -9,7 +9,7 @@ LABEL_NAMES = ['aeroplane', 'bicycle', 'bird', 'boat', 'bottle',
 
 NUM_CLASSES = len(LABEL_NAMES)
 
-INP_SIZE = 416  # rgb images
+INP_SIZE = 368  # rgb images
 
 NUM_ANCHORS_CELL = 5
 
