@@ -41,8 +41,6 @@ class Network(object):
         self.images_ph = tf.placeholder(
             tf.uint8, shape=[None, cfg.INP_SIZE, cfg.INP_SIZE, 3])
 
-        self.warmup = tf.placeholder(tf.bool)
-
         # generate anchors for inp_size
         self.anchors = tf.Variable([[1.08, 1.19], [3.42, 4.41], [6.63, 11.38], [9.42, 5.11], [
                                    16.62, 10.52]], trainable=False, name='anchors', dtype=tf.float32)
@@ -73,6 +71,8 @@ class Network(object):
             self.gt_boxes_ph = tf.placeholder(tf.float32)
 
             self.gt_cls_ph = tf.placeholder(tf.int8)
+
+            self.warmup = tf.placeholder(tf.bool)
 
             # compute targets regression
             bbox_target, bbox_mask, iou_target, iou_mask, cls_target, cls_mask, num_boxes = tf.py_func(
@@ -106,7 +106,7 @@ class Network(object):
                 0, trainable=False, name='global_step')
 
             self.learning_rate = tf.train.exponential_decay(
-                learning_rate, self.global_step, 5000, 0.75, staircase=True)
+                learning_rate, self.global_step, 10000, 0.75, staircase=True)
 
             self.optimizer = tf.train.MomentumOptimizer(
                 self.learning_rate, 0.9).minimize(self.total_loss, self.global_step)

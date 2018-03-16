@@ -32,7 +32,7 @@ def proposal_target_layer(feed_data, anchors, logitsize, warmup):
     if warmup:  # match prediction boxes to anchors
         bbox_target[:, :, 0:2] = 0.5  # sig(tx), sig(ty) = 0.5 -> tx, ty = 0
         bbox_target[:, :, 2:4] = 1.0  # exp(tw), exp(th) = 1.0 -> tw, th = 0
-        bbox_mask += cfg.BBOX_SCALE  # regression all prediction boxes
+        bbox_mask += cfg.COORD_SCALE  # regression all prediction boxes
 
     # compute overlaps btw prediction and groundtruth boxes
     box_pred = np.reshape(box_pred, [-1, 4])
@@ -82,11 +82,11 @@ def proposal_target_layer(feed_data, anchors, logitsize, warmup):
             (iou_truth - iou_pred[cell_i, a, :])  # ?(1-iou_pred)
         iou_target[cell_i, a, :] = iou_truth
 
-        bbox_mask[cell_i, a, :] = cfg.BBOX_SCALE
+        bbox_mask[cell_i, a, :] = cfg.COORD_SCALE
         box_target[i, 2:4] /= anchors[a]
         bbox_target[cell_i, a, :] = box_target[i]
 
-        cls_mask[cell_i, a, :] = cfg.CLS_SCALE
+        cls_mask[cell_i, a, :] = cfg.CLASS_SCALE
         cls_target[cell_i, a, gt_cls[i]] = 1
 
     return bbox_target, bbox_mask, iou_target, iou_mask, cls_target, cls_mask, num_boxes

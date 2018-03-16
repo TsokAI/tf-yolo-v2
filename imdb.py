@@ -45,6 +45,7 @@ def load_image(anno_dir, images_dir, xml):
 
     if np.random.randint(0, 2):  # randomly left-right flipping
         image = cv2.flip(image, 1)
+        boxes[:, [0, 2]] = boxes[:, [2, 0]]  # swap x1, x2
         boxes[:, 0::2] = cfg.INP_SIZE - boxes[:, 0::2]
 
     return image, boxes, classes
