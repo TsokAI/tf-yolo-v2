@@ -6,6 +6,7 @@ LABEL_NAMES = ['aeroplane', 'bicycle', 'bird', 'boat', 'bottle',
                'sheep', 'sofa', 'train', 'tvmonitor']
 
 # LABEL_NAMES = ['car', 'bus', 'van', 'others']
+# {'car': 175379, 'bus': 10691, 'van': 19207, 'others': 1524} -> weighted = [1, 10, 10, 100]
 
 NUM_CLASSES = len(LABEL_NAMES)
 

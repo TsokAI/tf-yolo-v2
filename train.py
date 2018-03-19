@@ -10,7 +10,7 @@ anno_dir = os.path.join(data_dir, 'annotation')
 images_dir = os.path.join(data_dir, 'images')
 
 train_params = {
-    'epochs': 60,
+    'epochs': 200,
     'warmup_epochs': 10,
     'batch_size': 16,
     'lr': 1e-3
@@ -27,16 +27,16 @@ net = Network(is_training=True,
 print('start training')
 
 # warmup epochs
-# for epoch in range(train_params['warmup_epochs']):
-#     epoch_t = time.time()
+for epoch in range(train_params['warmup_epochs']):
+    epoch_t = time.time()
 
-#     for images, gt_boxes, gt_cls in imdb.next_batch():
-#         net.fit(images, gt_boxes, gt_cls, warmup=True)
+    for images, gt_boxes, gt_cls in imdb.next_batch():
+        net.fit(images, gt_boxes, gt_cls, warmup=True)
 
-#     epoch_t_dif = time.time() - epoch_t
-#     train_t += epoch_t_dif
+    epoch_t_dif = time.time() - epoch_t
+    train_t += epoch_t_dif
 
-# net.save_ckpt()
+net.save_ckpt()
 
 # training epochs
 for epoch in range(1, train_params['epochs'] + 1):

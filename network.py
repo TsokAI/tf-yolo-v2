@@ -64,7 +64,7 @@ class Network(object):
         # sig(to) for iou (predition-groundtruth) prediction
         iou_pred = tf.sigmoid(logits[:, :, :, 4:5])
 
-        cls_pred = logits[:, :, :, 5:]
+        cls_pred = tf.nn.softmax(logits[:, :, :, 5:])
 
         if is_training:
             # training placeholders
@@ -84,7 +84,6 @@ class Network(object):
 
             RSUM = tf.losses.Reduction.SUM
 
-            # TODO: replace with smooth_l1 loss [model/objects-detection]
             self.bbox_loss = tf.losses.mean_squared_error(
                 bbox_target*bbox_mask, bbox_pred*bbox_mask, scope='bbox_loss', reduction=RSUM) / num_boxes
             tf.summary.scalar('bbox_loss', self.bbox_loss)
@@ -93,8 +92,7 @@ class Network(object):
                 iou_target*iou_mask, iou_pred*iou_mask, scope='iou_loss', reduction=RSUM) / num_boxes
             tf.summary.scalar('iou_loss', self.iou_loss)
 
-            # TODO: replace with softmax_focal_cross_entropy [model/objects-detection] [fbrs/detectron]
-            self.cls_loss = tf.losses.softmax_cross_entropy(
+            self.cls_loss = tf.losses.mean_squared_error(
                 cls_target*cls_mask, cls_pred*cls_mask, scope='cls_loss', reduction=RSUM) / num_boxes
             tf.summary.scalar('cls_loss', self.cls_loss)
 
@@ -106,15 +104,13 @@ class Network(object):
                 0, trainable=False, name='global_step')
 
             self.learning_rate = tf.train.exponential_decay(
-                learning_rate, self.global_step, 10000, 0.75, staircase=True)
+                learning_rate, self.global_step, 10000, 0.8, staircase=True)
 
-            self.optimizer = tf.train.MomentumOptimizer(
-                self.learning_rate, 0.9).minimize(self.total_loss, self.global_step)
+            self.optimizer = tf.train.AdamOptimizer(
+                self.learning_rate).minimize(self.total_loss, self.global_step)
 
         else:
             # testing, batch_size is 1
-            cls_pred = tf.nn.softmax(cls_pred)
-
             self.box_pred, self.cls_inds, self.scores = tf.py_func(
                 proposal_layer,
                 [bbox_pred[0], iou_pred[0], cls_pred[0], self.anchors, logitsize],

@@ -4,7 +4,7 @@ import tensorflow as tf
 
 def softmax_focal(onehot_labels, logits, weights=1.0, alpha=0.25, gamma=2.0, scope=None):
     with tf.name_scope(scope, 'softmax_focal_loss'):
-        # CE = sigma(-ti*log(pi)) for softmax
+        # CE = sum(-ti*log(pi)) for softmax
         cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(
             labels=onehot_labels, logits=logits)
 
@@ -23,7 +23,7 @@ def softmax_focal(onehot_labels, logits, weights=1.0, alpha=0.25, gamma=2.0, sco
 
 def sigmoid_focal(onehot_labels, logits, weights=1.0, alpha=0.25, gamma=2.0, scope=None):
     with tf.name_scope(scope, 'sigmoid_focal_loss'):
-        # CE = sigma(-ti*log(pi) - (1-ti)*log(1-pi)) for sigmoid
+        # CE = sum(-ti*log(pi) - (1-ti)*log(1-pi)) for sigmoid
         cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(
             labels=onehot_labels, logits=logits)
 
