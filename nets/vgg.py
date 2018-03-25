@@ -71,9 +71,19 @@ def restore(sess, global_vars):
     sess.run(tf.variables_initializer(initializing_vars))
 
 
-def preprocess(images):
+def preprocess_for_train(image):
+    image = tf.image.random_brightness(image, max_delta=32. / 255.)
+    image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
+    return image
+
+
+def preprocess(images, is_training=True):
     # images: 4d tensor [batch_size, height, width, channels]
     # rgb_means subtraction on each image
-    images = tf.cast(images, tf.float32) - [123.68, 116.78, 103.94]
+    images = tf.cast(images, tf.float32)
+    if is_training:
+        images = tf.map_fn(preprocess_for_train, images)
+
+    images = images - [123.68, 116.78, 103.94]
 
     return images

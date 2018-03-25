@@ -9,8 +9,8 @@ def draw_targets(image, box_pred, cls_inds, scores):
         p1 = (box_pred[i, 0], box_pred[i, 1])
         p2 = (box_pred[i, 2], box_pred[i, 3])
 
-        cv2.rectangle(image, p1, p2, (0, 0, 255), 2)
+        cv2.rectangle(image, p1, p2, (0, 0, 255), 1)
         cv2.putText(image, LABEL_NAMES[cls_inds[i]] + '_{:.3f}'.format(scores[i]),
-                    p1, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255))
+                    p1, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255))
 
     return image

@@ -46,7 +46,10 @@ class Network(object):
                                    16.62, 10.52]], trainable=False, name='anchors', dtype=tf.float32)
 
         # TODO: freeze layers from pretrained model
-        logits = net.forward(net.preprocess(self.images_ph), is_training)
+        # color distortion for training, none for inference
+        prep_images = net.preprocess(self.images_ph, is_training)
+
+        logits = net.forward(prep_images, is_training)
 
         logits = slim.conv2d(logits, (cfg.NUM_ANCHORS_CELL*(5+cfg.NUM_CLASSES)),
                              [1, 1], activation_fn=None, scope='logits')
@@ -64,7 +67,7 @@ class Network(object):
         # sig(to) for iou (predition-groundtruth) prediction
         iou_pred = tf.sigmoid(logits[:, :, :, 4:5])
 
-        cls_pred = tf.nn.softmax(logits[:, :, :, 5:])
+        cls_pred = logits[:, :, :, 5:]
 
         if is_training:
             # training placeholders
@@ -92,8 +95,9 @@ class Network(object):
                 iou_target*iou_mask, iou_pred*iou_mask, scope='iou_loss', reduction=RSUM) / num_boxes
             tf.summary.scalar('iou_loss', self.iou_loss)
 
-            self.cls_loss = tf.losses.mean_squared_error(
-                cls_target*cls_mask, cls_pred*cls_mask, scope='cls_loss', reduction=RSUM) / num_boxes
+            cls_mask = tf.squeeze(cls_mask, axis=-1)
+            self.cls_loss = tf.losses.softmax_cross_entropy(
+                cls_target, cls_pred, cls_mask, scope='cls_loss', reduction=RSUM) / num_boxes
             tf.summary.scalar('cls_loss', self.cls_loss)
 
             self.total_loss = self.bbox_loss + self.iou_loss + self.cls_loss
@@ -104,13 +108,16 @@ class Network(object):
                 0, trainable=False, name='global_step')
 
             self.learning_rate = tf.train.exponential_decay(
-                learning_rate, self.global_step, 10000, 0.8, staircase=True)
+                learning_rate, self.global_step, 25000, 0.9, staircase=True)
+            tf.summary.scalar('learning_rate', self.learning_rate)
 
             self.optimizer = tf.train.AdamOptimizer(
                 self.learning_rate).minimize(self.total_loss, self.global_step)
 
         else:
             # testing, batch_size is 1
+            cls_pred = tf.nn.softmax(cls_pred)
+
             self.box_pred, self.cls_inds, self.scores = tf.py_func(
                 proposal_layer,
                 [bbox_pred[0], iou_pred[0], cls_pred[0], self.anchors, logitsize],

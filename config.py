@@ -1,25 +1,27 @@
-DATASET = 'voc'
+# DATASET = 'voc'
+DATASET = 'detrac'
 
-LABEL_NAMES = ['aeroplane', 'bicycle', 'bird', 'boat', 'bottle',
-               'bus', 'car', 'cat', 'chair', 'cow', 'diningtable',
-               'dog', 'horse', 'motorbike', 'person', 'pottedplant',
-               'sheep', 'sofa', 'train', 'tvmonitor']
+# LABEL_NAMES = ['aeroplane', 'bicycle', 'bird', 'boat', 'bottle',
+#                'bus', 'car', 'cat', 'chair', 'cow', 'diningtable',
+#                'dog', 'horse', 'motorbike', 'person', 'pottedplant',
+#                'sheep', 'sofa', 'train', 'tvmonitor']
 
-# LABEL_NAMES = ['car', 'bus', 'van', 'others']
-# {'car': 175379, 'bus': 10691, 'van': 19207, 'others': 1524} -> weighted = [1, 10, 10, 100]
+LABEL_NAMES = ['car', 'bus', 'van', 'others']
+# {'car': 175379, 'bus': 10691, 'van': 19207, 'others': 1524} -> 206801 examples
+# weight_class = log(alpha*total_examples / class_examples), alpha=1
 
 NUM_CLASSES = len(LABEL_NAMES)
 
-INP_SIZE = 368  # rgb images
+INP_SIZE = 400  # rgb images
 
 NUM_ANCHORS_CELL = 5
 
 USE_GPU = True
 
 # training
-IOU_THRESH = 0.6  # positive rois
+IOU_THRESH = 0.6  # ignored rois
 
-CLASS_SCALE = 1
+CLASS_SCALE = [0.165, 2.962, 2.376, 4.91]  # voc: [1]*NUM_CLASSES
 COORD_SCALE = 1
 OBJECT_SCALE = 5
 NO_OBJECT_SCALE = 1

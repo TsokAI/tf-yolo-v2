@@ -86,7 +86,7 @@ def proposal_target_layer(feed_data, anchors, logitsize, warmup):
         box_target[i, 2:4] /= anchors[a]
         bbox_target[cell_i, a, :] = box_target[i]
 
-        cls_mask[cell_i, a, :] = cfg.CLASS_SCALE
+        cls_mask[cell_i, a, :] = cfg.CLASS_SCALE[gt_cls[i]]  # imbalance data
         cls_target[cell_i, a, gt_cls[i]] = 1
 
     return bbox_target, bbox_mask, iou_target, iou_mask, cls_target, cls_mask, num_boxes
