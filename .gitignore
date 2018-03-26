@@ -4,6 +4,7 @@
 __pycache__
 model
 ckpt
+ckpt3
 data
 logs
 test/output

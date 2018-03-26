@@ -1,4 +1,0 @@
-{'car': 175379, 'bus': 10691, 'van': 19207, 'others': 1524} -> 206801 examples
-weight_class = log(alpha*total_examples / class_examples), alpha=1
-
-CLASS_SCALE = [0.165, 2.962, 2.376, 4.91]

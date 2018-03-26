@@ -19,7 +19,7 @@ NUM_ANCHORS_CELL = 5
 USE_GPU = True
 
 # training
-IOU_THRESH = 0.6  # ignored rois
+IOU_THRESH = 0.6  # ignored rois threshold
 
 CLASS_SCALE = [0.165, 2.962, 2.376, 4.91]  # voc: [1]*NUM_CLASSES
 COORD_SCALE = 1

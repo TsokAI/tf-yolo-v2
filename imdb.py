@@ -3,7 +3,7 @@ import os
 import numpy as np
 import cv2
 import xml.etree.cElementTree as ctree
-import config as cfg
+import config3 as cfg
 
 label2cls = {}
 for idx, label in enumerate(cfg.LABEL_NAMES):

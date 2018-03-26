@@ -6,80 +6,19 @@ import os
 import re
 import tensorflow as tf
 from tensorflow.python.pywrap_tensorflow import NewCheckpointReader
-from nets.resnet_utils import subsample, conv2d_same
+from nets.resnet_utils import conv2d_same, resnet_v2_block
 
 slim = tf.contrib.slim
 
 
-@ slim.add_arg_scope
-def bottleneck(inputs, depth, depth_bottleneck, stride, rate=1, scope=None):
-    """Bottleneck residual unit variant with BN before convolutions.
-    Args:
-    inputs: A tensor of size [batch, height, width, channels].
-    depth: The depth of the ResNet unit output.
-    depth_bottleneck: The depth of the bottleneck layers.
-    stride: The ResNet unit's stride. Determines the amount of downsampling of
-      the units output compared to its input.
-    rate: An integer, rate for atrous convolution.
-    scope: Optional variable_scope.
-    Returns:
-        The ResNet unit's output.
-    """
-    with tf.variable_scope(scope, 'bottleneck_v2', [inputs]):
-        depth_in = slim.utils.last_dimension(inputs.get_shape(), min_rank=4)
-        preact = slim.batch_norm(
-            inputs, activation_fn=tf.nn.relu, scope='preact')
-        if depth == depth_in:
-            shortcut = subsample(inputs, stride, 'shortcut')
-        else:
-            shortcut = slim.conv2d(preact, depth, [1, 1], stride=stride,
-                                   normalizer_fn=None, activation_fn=None,
-                                   scope='shortcut')
+# modified for yolo3, not compatible with yolo2
+def forward(inputs, num_outputs, is_training=True, scope=None):
+    end_points = {}
 
-        residual = slim.conv2d(preact, depth_bottleneck, [1, 1], stride=1,
-                               scope='conv1')
-
-        residual = conv2d_same(residual, depth_bottleneck, 3, stride=stride,
-                               rate=rate, scope='conv2')
-
-        residual = slim.conv2d(residual, depth, [1, 1], stride=1,
-                               normalizer_fn=None, activation_fn=None,
-                               scope='conv3')
-
-        output = shortcut + residual
-
-    return output
-
-
-def resnet_v2_block(inputs, base_depth, num_units, stride, scope=None):
-    """Helper function for creating a resnet_v2 block.
-    Args:
-        net: A tensor of size [batch, height, width, channels].
-        depth: The depth of layer for each unit.
-        num_units: The number of units in the block.
-        stride: The stride of the block, implemented as a stride in the last unit.
-          All other units have stride=1.
-        scope: The scope of the block.
-    Returns:
-        A resnet_v2 block.
-    """
-    depth = 4 * base_depth
-    with tf.variable_scope(scope, 'block', [inputs]):
-        net = inputs
-        # unit scope is unit_%d/bottleneck_v2
-        for i in range(num_units - 1):
-            net = bottleneck(net, depth, base_depth, stride=1,
-                             scope='unit_{}/bottleneck_v2'.format(i + 1))
-        net = bottleneck(net, depth, base_depth, stride=stride,
-                         scope='unit_{}/bottleneck_v2'.format(num_units))
-
-    return net
-
-
-def forward(inputs, is_training=True, scope=None):
-    with tf.variable_scope(scope, 'resnet_v2_50', [inputs]):
-        with slim.arg_scope([slim.conv2d],
-                            normalizer_fn=slim.batch_norm):
+    with slim.arg_scope([slim.conv2d, slim.conv2d_transpose],
+                        normalizer_fn=slim.batch_norm):
+        # resnet50 backbone
+        with tf.variable_scope(scope, 'resnet_v2_50', [inputs]):
             with slim.arg_scope([slim.batch_norm], is_training=is_training):
                 # root block
                 with slim.arg_scope([slim.conv2d],
@@ -88,18 +27,54 @@ def forward(inputs, is_training=True, scope=None):
                     net = slim.max_pool2d(net, [3, 3], stride=2, scope='pool1')
 
                 # residual blocks
-                net = resnet_v2_block(
+                net, _ = resnet_v2_block(
                     net, base_depth=64, num_units=3, stride=2, scope='block1')
-                net = resnet_v2_block(
+
+                net, block2_aux = resnet_v2_block(
                     net, base_depth=128, num_units=4, stride=2, scope='block2')
-                net = resnet_v2_block(
-                    net, base_depth=256, num_units=6, stride=2, scope='block3')
-                net = resnet_v2_block(
-                    net, base_depth=512, num_units=3, stride=1, scope='block4')
+
+                net, block3_aux = resnet_v2_block(
+                    net, base_depth=256, num_units=4, stride=2, scope='block3')
+
+                net, _ = resnet_v2_block(
+                    net, base_depth=512, num_units=2, stride=1, scope='block4')
                 net = slim.batch_norm(
                     net, activation_fn=tf.nn.relu, scope='postnorm')
 
-    return net
+        # feature pyramid, residual blocks, convolution_transpose
+        # aux applied batchnorm
+        with tf.variable_scope('block4_deconv'):
+            end_points['block4'] = slim.conv2d(
+                net, num_outputs, [1, 1], normalizer_fn=None, activation_fn=None, scope='conv1')
+
+        with tf.variable_scope('block3_deconv'):
+            block3_c = block3_aux.get_shape()[-1]
+
+            block3_dec = slim.conv2d(net, block3_c, [1, 1], scope='conv1')
+
+            block3_dec = slim.conv2d_transpose(
+                block3_dec, block3_c, [3, 3], stride=2, scope='conv2')
+
+            block3_dec = block3_dec + block3_aux
+
+            end_points['block3'] = slim.conv2d(block3_dec, num_outputs, [
+                1, 1], normalizer_fn=None, activation_fn=None, scope='conv3')
+
+        with tf.variable_scope('block2_deconv'):
+            block2_c = block2_aux.get_shape()[-1]
+
+            block2_dec = slim.conv2d(block3_dec, block2_c, [
+                                     1, 1], scope='conv1')
+
+            block2_dec = slim.conv2d_transpose(
+                block2_dec, block2_c, [3, 3], stride=2, scope='conv2')
+
+            block2_dec = block2_dec + block2_aux
+
+            end_points['block2'] = slim.conv2d(block2_dec, num_outputs, [
+                1, 1], normalizer_fn=None, activation_fn=None, scope='conv3')
+
+    return end_points
 
 
 def restore(sess, global_vars):
