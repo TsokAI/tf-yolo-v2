@@ -12,14 +12,14 @@ LABEL_NAMES = ['car', 'bus', 'van', 'others']
 
 NUM_CLASSES = len(LABEL_NAMES)
 
-INP_SIZE = 400  # rgb images
+INP_SIZE = 320  # rgb images
 
-NUM_ANCHORS_CELL = 5
+NUM_ANCHORS_CELL = 3
 
 USE_GPU = True
 
 # training
-IOU_THRESH = 0.6  # ignored rois threshold
+IOU_THRESH = 0.5  # ignored rois threshold
 
 CLASS_SCALE = [0.165, 2.962, 2.376, 4.91]  # voc: [1]*NUM_CLASSES
 COORD_SCALE = 1
@@ -29,6 +29,6 @@ NO_OBJECT_SCALE = 1
 # inference
 COEF_THRESH = 0.3  # detector confidence
 
-PRE_NMS_TOP_N = 300  # keep top n before apply nms
+PRE_NMS_TOP_N = 200  # keep top n before apply nms
 
 NMS_THRESH = 0.3

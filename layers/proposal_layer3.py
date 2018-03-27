@@ -1,12 +1,15 @@
 from __future__ import absolute_import, division, print_function
 import numpy as np
-from utils.bbox_transform import bbox_transform_inv
-import config3 as cfg
+from utils.bbox_transform import bbox_transform_inv3
+import config as cfg
 
 
 def proposal_layer(bbox_pred, iou_pred, cls_pred, anchors, logitsize):
-    box_pred = bbox_transform_inv(np.ascontiguousarray(bbox_pred, dtype=np.float32), np.ascontiguousarray(
-        anchors, dtype=np.float32), logitsize, logitsize) * cfg.INP_SIZE
+    box_pred = bbox_transform_inv3(
+        np.ascontiguousarray(bbox_pred, dtype=np.float32),
+        np.ascontiguousarray(anchors, dtype=np.float32),
+        cfg.INP_SIZE, cfg.INP_SIZE,
+        logitsize, logitsize)
 
     box_pred = np.reshape(box_pred, [-1, 4])
 

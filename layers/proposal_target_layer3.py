@@ -1,9 +1,9 @@
 # compute targets for regression/classification from proposal_target_layer
 from __future__ import absolute_import, division, print_function
 import numpy as np
-from utils.bbox_transform import bbox_transform_inv
+from utils.bbox_transform import bbox_transform_inv3
 from utils.bbox import box_overlaps, anchor_overlaps
-import config3 as cfg
+import config as cfg
 
 
 def proposal_target_layer(feed_data, anchors, logitsize, warmup):
@@ -16,9 +16,12 @@ def proposal_target_layer(feed_data, anchors, logitsize, warmup):
     gt_boxes = gt_boxes[gt_inds]
     gt_cls = gt_cls[gt_inds]
 
-    # transform bbox and rescale to inp_size
-    box_pred = bbox_transform_inv(np.ascontiguousarray(bbox_pred, dtype=np.float32), np.ascontiguousarray(
-        anchors, dtype=np.float32), logitsize, logitsize) * cfg.INP_SIZE
+    # transform bbox
+    box_pred = bbox_transform_inv3(
+        np.ascontiguousarray(bbox_pred, dtype=np.float32),
+        np.ascontiguousarray(anchors, dtype=np.float32),
+        cfg.INP_SIZE, cfg.INP_SIZE,
+        logitsize, logitsize)
 
     hw, num_anchors, _ = box_pred.shape
 

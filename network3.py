@@ -5,10 +5,10 @@ import tensorflow as tf
 from multiprocessing import Pool
 from functools import partial
 import nets.resnet as net
-import config3 as cfg
+import config as cfg
 from layers.proposal_target_layer3 import proposal_target_layer
 from layers.proposal_layer3 import proposal_layer
-from nms.gpu_nms import gpu_nms
+from nms.gpu_nms import gpu_nms  # cpu_nms
 from utils.bbox_transform import clip_boxes
 
 slim = tf.contrib.slim
@@ -130,7 +130,7 @@ class Network(object):
                 0, trainable=False, name='global_step')
 
             self.learning_rate = tf.train.exponential_decay(
-                learning_rate, self.global_step, 12500, 0.75, staircase=True)
+                learning_rate, self.global_step, 12500, 0.9, staircase=True)
 
             self.optimizer = tf.train.MomentumOptimizer(
                 self.learning_rate, 0.9).minimize(self.total_loss, self.global_step)

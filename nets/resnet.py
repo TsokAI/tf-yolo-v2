@@ -34,10 +34,10 @@ def forward(inputs, num_outputs, is_training=True, scope=None):
                     net, base_depth=128, num_units=4, stride=2, scope='block2')
 
                 net, block3_aux = resnet_v2_block(
-                    net, base_depth=256, num_units=4, stride=2, scope='block3')
+                    net, base_depth=256, num_units=4, stride=2, scope='block3')  # reduced
 
                 net, _ = resnet_v2_block(
-                    net, base_depth=512, num_units=2, stride=1, scope='block4')
+                    net, base_depth=512, num_units=2, stride=1, scope='block4')  # reduced
                 net = slim.batch_norm(
                     net, activation_fn=tf.nn.relu, scope='postnorm')
 
