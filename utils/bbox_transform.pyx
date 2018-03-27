@@ -73,7 +73,7 @@ cdef bbox_transform_inv3_op(
     Parameters
     ----------
     bbox_pred: 3-dim float ndarray [out_h*out_w, num_anchors, 4] of (sig(tx), sig(ty), exp(th), exp(tw))
-    anchors: [num_anchors, 2] of (ph, pw)
+    anchors: [num_anchors, 2] of (ph, pw) in input's scale
     in_w, in_h: width, height of input
     out_w, out_h: width, height of feature map
     Returns

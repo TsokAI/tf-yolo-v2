@@ -10,17 +10,17 @@ anno_dir = os.path.join(data_dir, 'annotation')
 images_dir = os.path.join(data_dir, 'images')
 
 train_params = {
-    'epochs': 150,
+    'epochs': 200,
     'warmup_epochs': 10,
     'batch_size': 16,
-    'lr': 1e-6  # 1e-6 warmup, 1e-3 with decay for training
+    'lr': 1e-6  # 1e-6 warmup, 1e-5 with decay 0.9 for training
 }
 
 imdb = Imdb(anno_dir, images_dir,
             batch_size=train_params['batch_size'])
 
 net = Network(is_training=True,
-              learning_rate=train_params['lr'])
+              init_learning_rate=train_params['lr'])
 
 print('start training')
 

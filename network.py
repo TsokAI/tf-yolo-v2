@@ -22,19 +22,20 @@ def build_targets(bbox_pred, iou_pred, gt_boxes, gt_cls, anchors, logitsize, war
                        ((bbox_pred[i], iou_pred[i], gt_boxes[i], gt_cls[i])
                         for i in range(gt_boxes.shape[0])))
 
-    bbox_target = np.stack(t[0] for t in targets)
-    bbox_mask = np.stack(t[1] for t in targets)
-    iou_target = np.stack(t[2] for t in targets)
-    iou_mask = np.stack(t[3] for t in targets)
-    cls_target = np.stack(t[4] for t in targets)
-    cls_mask = np.stack(t[5] for t in targets)
-    num_boxes = np.sum(np.stack(t[6] for t in targets)).astype(np.float32)
+    num_boxes = np.sum(np.stack(t[0] for t in targets)).astype(np.float32)
 
-    return bbox_target, bbox_mask, iou_target, iou_mask, cls_target, cls_mask, num_boxes
+    cls_target = np.stack(t[1] for t in targets)
+    cls_mask = np.stack(t[2] for t in targets)
+    iou_target = np.stack(t[3] for t in targets)
+    iou_mask = np.stack(t[4] for t in targets)
+    bbox_target = np.stack(t[5] for t in targets)
+    bbox_mask = np.stack(t[6] for t in targets)
+
+    return num_boxes, cls_target, cls_mask, iou_target, iou_mask, bbox_target, bbox_mask
 
 
 class Network(object):
-    def __init__(self, is_training=True, learning_rate=None):
+    def __init__(self, is_training=True, init_learning_rate=None):
         self.sess = tf.Session()
 
         # [batch_size, inp_size, inp_size, channels]
@@ -75,44 +76,46 @@ class Network(object):
 
             self.gt_cls_ph = tf.placeholder(tf.int8)
 
-            self.warmup = tf.placeholder(tf.bool)
+            self.warmup_ph = tf.placeholder(tf.bool)
 
             # compute targets regression
-            bbox_target, bbox_mask, iou_target, iou_mask, cls_target, cls_mask, num_boxes = tf.py_func(
+            num_boxes, cls_target, cls_mask, iou_target, iou_mask, bbox_target, bbox_mask = tf.py_func(
                 build_targets,
                 [bbox_pred, iou_pred,
                  self.gt_boxes_ph, self.gt_cls_ph, self.anchors, logitsize, self.warmup],
                 [tf.float32] * 7,
                 name='proposal_target_layer')
 
-            RSUM = tf.losses.Reduction.SUM
+            rsum = tf.losses.Reduction.SUM
 
-            self.bbox_loss = tf.losses.mean_squared_error(
-                bbox_target*bbox_mask, bbox_pred*bbox_mask, scope='bbox_loss', reduction=RSUM) / num_boxes
-            tf.summary.scalar('bbox_loss', self.bbox_loss)
+            cls_loss = tf.losses.softmax_cross_entropy(
+                cls_target, cls_pred, cls_mask, scope='cls_loss', reduction=rsum) / num_boxes
+            iou_loss = tf.losses.mean_squared_error(
+                iou_target*iou_mask, iou_pred*iou_mask, scope='iou_loss', reduction=rsum) / num_boxes
+            bbox_loss = tf.losses.mean_squared_error(
+                bbox_target*bbox_mask, bbox_pred*bbox_mask, scope='bbox_loss', reduction=rsum) / num_boxes
+            total_loss = cls_loss + iou_loss + bbox_loss
 
-            self.iou_loss = tf.losses.mean_squared_error(
-                iou_target*iou_mask, iou_pred*iou_mask, scope='iou_loss', reduction=RSUM) / num_boxes
-            tf.summary.scalar('iou_loss', self.iou_loss)
-
-            cls_mask = tf.squeeze(cls_mask, axis=-1)
-            self.cls_loss = tf.losses.softmax_cross_entropy(
-                cls_target, cls_pred, cls_mask, scope='cls_loss', reduction=RSUM) / num_boxes
-            tf.summary.scalar('cls_loss', self.cls_loss)
-
-            self.total_loss = self.bbox_loss + self.iou_loss + self.cls_loss
-            tf.summary.scalar('total_loss', self.total_loss)
-
-            # training
             self.global_step = tf.Variable(
                 0, trainable=False, name='global_step')
 
-            self.learning_rate = tf.train.exponential_decay(
-                learning_rate, self.global_step, 25000, 0.9, staircase=True)
-            tf.summary.scalar('learning_rate', self.learning_rate)
+            learning_rate = tf.train.exponential_decay(
+                init_learning_rate, self.global_step, 25000, 0.9, staircase=True)
 
             self.optimizer = tf.train.AdamOptimizer(
-                self.learning_rate).minimize(self.total_loss, self.global_step)
+                learning_rate).minimize(total_loss, self.global_step)
+
+            # training summaries
+            tf.summary.scalar('cls_loss', cls_loss)
+            tf.summary.scalar('iou_loss', iou_loss)
+            tf.summary.scalar('bbox_loss', bbox_loss)
+            tf.summary.scalar('total_loss', total_loss)
+            tf.summary.scalar('learning_rate', learning_rate)
+
+            self.merged = tf.summary.merge_all()
+
+            self.writer = tf.summary.FileWriter(
+                os.path.join(os.getcwd(), 'logs'), self.sess.graph)
 
         else:
             # testing, batch_size is 1
@@ -125,12 +128,6 @@ class Network(object):
                 name='proposal_layer')
 
         self.saver = tf.train.Saver(max_to_keep=1)
-
-        # summaries
-        self.merged = tf.summary.merge_all()
-
-        self.writer = tf.summary.FileWriter(
-            os.path.join(os.getcwd(), 'logs'), self.sess.graph)
 
         # restore with ckpt/pretrain or init
         try:
@@ -157,13 +154,14 @@ class Network(object):
                                          feed_dict={self.images_ph: images,
                                                     self.gt_boxes_ph: gt_boxes,
                                                     self.gt_cls_ph: gt_cls,
-                                                    self.warmup: warmup})
+                                                    self.warmup_ph: warmup})
 
         self.writer.add_summary(summary, step)
 
-    def predict(self, images):
-        # batch_size must be 1
+    def predict(self, image):
+        image = np.expand_dims(image, axis=0)  # [1, H, W, C]
+
         box_pred, cls_inds, scores = self.sess.run([self.box_pred, self.cls_inds, self.scores],
-                                                   feed_dict={self.images_ph: images})
+                                                   feed_dict={self.images_ph: image})
 
         return box_pred, cls_inds, scores

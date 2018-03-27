@@ -8,7 +8,7 @@ import nets.resnet as net
 import config as cfg
 from layers.proposal_target_layer3 import proposal_target_layer
 from layers.proposal_layer3 import proposal_layer
-from nms.gpu_nms import gpu_nms  # cpu_nms
+from layers.nms_wrapper import nms_detection
 from utils.bbox_transform import clip_boxes
 
 slim = tf.contrib.slim
@@ -19,25 +19,26 @@ if not os.path.exists(ckpt_dir):
     os.makedirs(ckpt_dir)
 
 
-def build_targets(bbox_pred, iou_pred, gt_boxes, gt_cls, anchors, logitsize, warmup):
+def build_targets(bbox_pred, iou_pred, gt_boxes, gt_cls, anchors, out_w, out_h, warmup):
     targets = pool.map(partial(proposal_target_layer,
-                               anchors=anchors, logitsize=logitsize, warmup=warmup),
+                               anchors=anchors, out_w=out_w, out_h=out_h, warmup=warmup),
                        ((bbox_pred[i], iou_pred[i], gt_boxes[i], gt_cls[i])
-                        for i in range(gt_boxes.shape[0])))
+                        for i in range(gt_boxes.shape[0])))  # multiprocessing
 
-    bbox_target = np.stack(t[0] for t in targets)
-    bbox_mask = np.stack(t[1] for t in targets)
-    iou_target = np.stack(t[2] for t in targets)
-    iou_mask = np.stack(t[3] for t in targets)
-    cls_target = np.stack(t[4] for t in targets)
-    cls_mask = np.stack(t[5] for t in targets)
-    num_boxes = np.sum(np.stack(t[6] for t in targets)).astype(np.float32)
+    num_boxes = np.sum(np.stack(t[0] for t in targets)).astype(np.float32)
 
-    return bbox_target, bbox_mask, iou_target, iou_mask, cls_target, cls_mask, num_boxes
+    cls_target = np.stack(t[1] for t in targets)
+    cls_mask = np.stack(t[2] for t in targets)
+    iou_target = np.stack(t[3] for t in targets)
+    iou_mask = np.stack(t[4] for t in targets)
+    bbox_target = np.stack(t[5] for t in targets)
+    bbox_mask = np.stack(t[6] for t in targets)
+
+    return num_boxes, cls_target, cls_mask, iou_target, iou_mask, bbox_target, bbox_mask
 
 
 class Network(object):
-    def __init__(self, is_training=True, learning_rate=None):
+    def __init__(self, is_training=True, init_learning_rate=None):
         self.session = tf.Session()
 
         self.images_ph = tf.placeholder(
@@ -59,97 +60,141 @@ class Network(object):
         end_points = net.forward(
             preprocess_images, (cfg.NUM_ANCHORS_CELL*(5+cfg.NUM_CLASSES)), is_training)
 
-        if is_training:
+        if is_training:  # training phase
             self.gt_boxes_ph = tf.placeholder(tf.float32)
             self.gt_cls_ph = tf.placeholder(tf.int8)
+            self.warmup_ph = tf.placeholder(tf.bool)
 
-            self.warmup = tf.placeholder(tf.bool)
+            cls_predictions = []  # logits for cross-entropy, not predictions
+            cls_targets = []
+            cls_masks = []
+            iou_predictions = []
+            iou_targets = []
+            iou_masks = []
+            bbox_predictions = []
+            bbox_targets = []
+            bbox_masks = []
+            total_boxes = 0
 
-            RSUM = tf.losses.Reduction.SUM
+            for block in end_points:
+                block_logits = end_points[block]
+                # NHWC tensor, different in each block
+                block_h, block_w = block_logits.get_shape()[1:3]
+                block_logits = tf.reshape(
+                    block_logits, shape=[-1, block_h*block_w, cfg.NUM_ANCHORS_CELL, 5 + cfg.NUM_CLASSES])
 
-            self.bbox_loss = 0
-            self.iou_loss = 0
-            self.cls_loss = 0
-        else:
-            self.box_pred = []
-            self.cls_inds = []
-            self.scores = []
+                # bbox predictions
+                xy_pred = tf.sigmoid(block_logits[:, :, :, 0:2])
+                wh_pred = tf.exp(block_logits[:, :, :, 2:4])
+                bbox_pred = tf.concat([xy_pred, wh_pred], axis=-1)
+                bbox_predictions.append(bbox_pred)
 
-        for block in end_points:
-            logits = end_points[block]
-            logitsize = logits.get_shape()[1]  # NHWC tensor, H=W
-            logits = tf.reshape(
-                logits, shape=[-1, logitsize*logitsize, cfg.NUM_ANCHORS_CELL, 5 + cfg.NUM_CLASSES])
+                # iou predictions
+                iou_pred = tf.sigmoid(block_logits[:, :, :, 4:5])
+                iou_predictions.append(iou_pred)
 
-            # [sig(tx), sig(ty), exp(tw), exp(th)]
-            xy_pred = tf.sigmoid(logits[:, :, :, 0:2])
-            wh_pred = tf.exp(logits[:, :, :, 2:4])
-            bbox_pred = tf.concat([xy_pred, wh_pred], axis=3)
+                # cls predictions, logits
+                cls_pred = block_logits[:, :, :, 5:]
+                cls_predictions.append(cls_pred)
 
-            # sig(to)
-            iou_pred = tf.sigmoid(logits[:, :, :, 4:5])
+                # TODO: faster here!!!
+                num_boxes, cls_target, cls_mask, iou_target, iou_mask, bbox_target, bbox_mask = tf.py_func(build_targets,
+                                                                                                           [bbox_pred, iou_pred,
+                                                                                                            self.gt_boxes_ph, self.gt_cls_ph,
+                                                                                                            self.anchors[
+                                                                                                                block], block_w, block_h,
+                                                                                                               self.warmup_ph],
+                                                                                                           [tf.float32] * 7,
+                                                                                                           name=block+'_proposal_target_layer')
 
-            cls_pred = logits[:, :, :, 5:]
+                total_boxes += num_boxes
+                cls_targets.append(cls_target)
+                cls_masks.append(cls_mask)
+                iou_targets.append(iou_target)
+                iou_masks.append(iou_mask)
+                bbox_targets.append(bbox_target)
+                bbox_masks.append(bbox_mask)
 
-            if is_training:
-                bbox_target, bbox_mask, iou_target, iou_mask, cls_target, cls_mask, num_boxes = tf.py_func(
-                    build_targets,
-                    [bbox_pred, iou_pred,
-                     self.gt_boxes_ph, self.gt_cls_ph, self.anchors[block], logitsize, self.warmup],
-                    [tf.float32] * 7,
-                    name=block+'_proposal_target_layer')
+            cls_predictions = tf.concat(cls_predictions, axis=1)
+            cls_targets = tf.concat(cls_targets, axis=1)
+            cls_masks = tf.concat(cls_masks, axis=1)
+            iou_predictions = tf.concat(iou_predictions, axis=1)
+            iou_targets = tf.concat(iou_targets, axis=1)
+            iou_masks = tf.concat(iou_masks, axis=1)
+            bbox_predictions = tf.concat(bbox_predictions, axis=1)
+            bbox_targets = tf.concat(bbox_targets, axis=1)
+            bbox_masks = tf.concat(bbox_masks, axis=1)
 
-                self.bbox_loss += tf.losses.mean_squared_error(
-                    bbox_target*bbox_mask, bbox_pred*bbox_mask, scope=block+'_bbox_loss', reduction=RSUM) / num_boxes
+            rsum = tf.losses.Reduction.SUM
 
-                self.iou_loss += tf.losses.mean_squared_error(
-                    iou_target*iou_mask, iou_pred*iou_mask, scope=block+'_iou_loss', reduction=RSUM) / num_boxes
-
-                cls_mask = tf.squeeze(cls_mask, axis=-1)
-                self.cls_loss += tf.losses.softmax_cross_entropy(
-                    cls_target, cls_pred, cls_mask, scope=block+'_cls_loss', reduction=RSUM) / num_boxes
-            else:
-                cls_pred = tf.nn.softmax(cls_pred)
-
-                # batch_size must be 1
-                box_pred, cls_inds, scores = tf.py_func(
-                    proposal_layer,
-                    [bbox_pred[0], iou_pred[0], cls_pred[0],
-                        self.anchors[block], logitsize],
-                    [tf.float32, tf.int8, tf.float32],
-                    name=block+'_proposal_layer')
-
-                self.box_pred.append(box_pred)
-                self.cls_inds.append(cls_inds)
-                self.scores.append(scores)
-
-        if is_training:
-            self.total_loss = self.bbox_loss + self.iou_loss + self.cls_loss
+            cls_loss = tf.losses.softmax_cross_entropy(
+                cls_targets, cls_predictions, cls_masks, scope='cls_loss', reduction=rsum) / total_boxes
+            iou_loss = tf.losses.mean_squared_error(
+                iou_targets*iou_masks, iou_predictions*iou_masks, scope='iou_loss', reduction=rsum) / total_boxes
+            bbox_loss = tf.losses.mean_squared_error(
+                bbox_targets*bbox_masks, bbox_predictions*bbox_masks, scope='bbox_loss', reduction=rsum) / total_boxes
+            total_loss = cls_loss + iou_loss + bbox_loss
 
             self.global_step = tf.Variable(
                 0, trainable=False, name='global_step')
 
-            self.learning_rate = tf.train.exponential_decay(
-                learning_rate, self.global_step, 12500, 0.9, staircase=True)
+            learning_rate = tf.train.exponential_decay(
+                init_learning_rate, self.global_step, 12500, 0.9, staircase=True)
 
-            self.optimizer = tf.train.MomentumOptimizer(
-                self.learning_rate, 0.9).minimize(self.total_loss, self.global_step)
+            self.optimizer = tf.train.AdamOptimizer(
+                learning_rate).minimize(total_loss, self.global_step)
 
             # training summaries
-            tf.summary.scalar('bbox_loss', self.bbox_loss)
-            tf.summary.scalar('iou_loss', self.iou_loss)
-            tf.summary.scalar('cls_loss', self.cls_loss)
-            tf.summary.scalar('total_loss', self.total_loss)
-            tf.summary.scalar('learning_rate', self.learning_rate)
+            tf.summary.scalar('cls_loss', cls_loss)
+            tf.summary.scalar('iou_loss', iou_loss)
+            tf.summary.scalar('bbox_loss', bbox_loss)
+            tf.summary.scalar('total_loss', total_loss)
+            tf.summary.scalar('learning_rate', learning_rate)
 
             self.merged = tf.summary.merge_all()
 
             self.writer = tf.summary.FileWriter(
                 os.path.join(os.getcwd(), 'logs'), self.session.graph)
-        else:
-            self.box_pred = tf.concat(self.box_pred, axis=0)
-            self.cls_inds = tf.concat(self.cls_inds, axis=0)
-            self.scores = tf.concat(self.scores, axis=0)
+
+        else:  # inference phase
+            self.box_coords = []
+            self.box_cls = []
+            self.box_scores = []
+
+            for block in end_points:
+                block_logits = end_points[block]
+                # NHWC tensor, different in each block
+                block_h, block_w = block_logits.get_shape()[1:3]
+                block_logits = tf.reshape(
+                    block_logits, shape=[-1, block_h*block_w, cfg.NUM_ANCHORS_CELL, 5 + cfg.NUM_CLASSES])
+
+                # bbox predictions
+                xy_pred = tf.sigmoid(block_logits[:, :, :, 0:2])
+                wh_pred = tf.exp(block_logits[:, :, :, 2:4])
+                bbox_pred = tf.concat([xy_pred, wh_pred], axis=-1)[0]
+
+                # iou predictions
+                iou_pred = tf.sigmoid(block_logits[:, :, :, 4:5])[0]
+
+                # cls predictions
+                cls_pred = tf.nn.softmax(block_logits[:, :, :, 5:])[0]
+
+                # only 1 image per batch
+                # keep top-n-score each block to apply nms to combined blocks
+                box_pred, cls_inds, scores = tf.py_func(proposal_layer,
+                                                        [bbox_pred, iou_pred, cls_pred,
+                                                         self.anchors[block], block_w, block_h],
+                                                        [tf.float32, tf.int8,
+                                                            tf.float32],
+                                                        name=block+'_proposal_layer')
+
+                self.box_coords.append(box_pred)
+                self.box_cls.append(cls_inds)
+                self.box_scores.append(scores)
+
+            self.box_coords = tf.concat(self.box_coords, axis=0)
+            self.box_cls = tf.concat(self.box_cls, axis=0)
+            self.box_scores = tf.concat(self.box_scores, axis=0)
 
         self.saver = tf.train.Saver(max_to_keep=1)
 
@@ -178,41 +223,42 @@ class Network(object):
                                             feed_dict={self.images_ph: images,
                                                        self.gt_boxes_ph: gt_boxes,
                                                        self.gt_cls_ph: gt_cls,
-                                                       self.warmup: warmup})
+                                                       self.warmup_ph: warmup})
 
         self.writer.add_summary(summary, step)
 
-    def predict(self, images):
-        box_pred, cls_inds, scores = self.session.run([self.box_pred, self.cls_inds, self.scores],
-                                                      feed_dict={self.images_ph: images})
+    def predict(self, image):
+        image = np.expand_dims(image, axis=0)  # [1, H, W, C]
 
-        # apply nms and clip boxes
-        keep = np.zeros(len(box_pred), dtype=np.int8)
-        for i in range(cfg.NUM_CLASSES):
-            inds = np.where(cls_inds == i)[0]
+        # combined multi-layer bounding boxes
+        box_coords, box_cls, box_scores = self.session.run([self.box_coords, self.box_cls, self.box_scores],
+                                                           feed_dict={self.images_ph: image})
+
+        keep = np.zeros(len(box_coords), dtype=np.int8)
+        for i in cfg.NUM_CLASSES:
+            inds = np.where(box_cls == i)[0]
             if len(inds) == 0:
-                continue
+                continue  # no i-objects in image
 
-            dets = np.ascontiguousarray(
-                np.hstack([box_pred[inds], scores[inds]]), dtype=np.float32)
+            dets = np.hstack([box_coords[inds], box_scores[inds]])
 
-            keep_in_cls = gpu_nms(dets, cfg.NMS_THRESH)
+            keep_in_cls = nms_detection(np.ascontiguousarray(dets, dtype=np.float32),
+                                        cfg.NMS_THRESH, use_gpu=cfg.USE_GPU)
 
             keep[inds[keep_in_cls]] = 1
 
         keep = np.where(keep > 0)[0]
 
-        box_pred = box_pred[keep]
-        cls_inds = cls_inds[keep]
-        scores = scores[keep][:, 0]
+        box_coords = box_coords[keep]
+        box_cls = (box_cls[keep]).astype(np.int8)
+        box_scores = box_scores[keep]
 
-        box_pred = clip_boxes(np.ascontiguousarray(box_pred, dtype=np.float32),
-                              cfg.INP_SIZE, cfg.INP_SIZE)
+        # clip outside-region of boxes
+        box_coords = clip_boxes(np.ascontiguousarray(box_coords, dtype=np.float32),
+                                cfg.INP_SIZE, cfg.INP_SIZE)
 
-        cls_inds = cls_inds.astype(np.int8)
-
-        return box_pred, cls_inds, scores
+    return box_coords, box_cls, box_scores
 
 
 if __name__ == '__main__':
-    Network(learning_rate=1e-3)
+    Network(init_learning_rate=1e-3)  # training

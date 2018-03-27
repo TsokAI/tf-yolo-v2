@@ -30,10 +30,9 @@ for i in os.listdir(images_dir):
 
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-    # batch_size is 1
-    box_pred, cls_inds, scores = net.predict(image[np.newaxis])
+    box_coords, box_cls, box_scores = net.predict(image)
 
-    image_cp = draw_targets(image_cp, box_pred, cls_inds, scores)
+    image_cp = draw_targets(image_cp, box_coords, box_cls, box_scores)
 
     cv2.imwrite(os.path.join(output_dir, i), image_cp)
 

@@ -70,11 +70,11 @@ def restore(sess, global_vars):
 
     sess.run(tf.variables_initializer(initializing_vars))
 
-# useless for vgg
-# def preprocess_for_train(image):
-#     image = tf.image.random_brightness(image, max_delta=32. / 255.)
-#     image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
-#     return image
+
+def preprocess_for_train(image):
+    image = tf.image.random_brightness(image, max_delta=32. / 255.)
+    image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
+    return image
 
 
 def preprocess(images, is_training=True):

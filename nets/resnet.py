@@ -31,10 +31,10 @@ def forward(inputs, num_outputs, is_training=True, scope=None):
                     net, base_depth=64, num_units=3, stride=2, scope='block1')
 
                 net, block2_aux = resnet_v2_block(
-                    net, base_depth=128, num_units=4, stride=2, scope='block2')
+                    net, base_depth=128, num_units=4, stride=2, scope='block2')  # reduced
 
                 net, block3_aux = resnet_v2_block(
-                    net, base_depth=256, num_units=4, stride=2, scope='block3')  # reduced
+                    net, base_depth=256, num_units=3, stride=2, scope='block3')  # reduced
 
                 net, _ = resnet_v2_block(
                     net, base_depth=512, num_units=2, stride=1, scope='block4')  # reduced

@@ -11,10 +11,10 @@ def proposal_target_layer(feed_data, anchors, logitsize, warmup):
 
     # filter ignored groundtruth boxes
     gt_inds = np.where(gt_cls >= 0)[0]
-    num_boxes = len(gt_inds)
-
     gt_boxes = gt_boxes[gt_inds]
     gt_cls = gt_cls[gt_inds]
+
+    num_boxes = len(gt_inds)  # number of groundtruth boxes
 
     # transform bbox and rescale to inp_size
     box_pred = bbox_transform_inv(np.ascontiguousarray(bbox_pred, dtype=np.float32), np.ascontiguousarray(
@@ -23,7 +23,7 @@ def proposal_target_layer(feed_data, anchors, logitsize, warmup):
     hw, num_anchors, _ = box_pred.shape
 
     cls_target = np.zeros((hw, num_anchors, cfg.NUM_CLASSES), dtype=np.float32)
-    cls_mask = np.zeros((hw, num_anchors, 1), dtype=np.float32)
+    cls_mask = np.zeros((hw, num_anchors), dtype=np.float32)
     iou_target = np.zeros((hw, num_anchors, 1), dtype=np.float32)
     iou_mask = np.zeros((hw, num_anchors, 1), dtype=np.float32)
     bbox_target = np.zeros((hw, num_anchors, 4), dtype=np.float32)
@@ -76,17 +76,17 @@ def proposal_target_layer(feed_data, anchors, logitsize, warmup):
 
         a = anchor_inds[i]
 
+        cls_target[cell_i, a, gt_cls[i]] = 1
+        cls_mask[cell_i, a] = cfg.CLASS_SCALE[gt_cls[i]]  # imbalance data
+
         # rescore iou
         iou_truth = box_ious[cell_i, a, i]
+        iou_target[cell_i, a, :] = iou_truth
         iou_mask[cell_i, a, :] = cfg.OBJECT_SCALE * \
             (iou_truth - iou_pred[cell_i, a, :])  # ?(1-iou_pred)
-        iou_target[cell_i, a, :] = iou_truth
 
-        bbox_mask[cell_i, a, :] = cfg.COORD_SCALE
         box_target[i, 2:4] /= anchors[a]
         bbox_target[cell_i, a, :] = box_target[i]
+        bbox_mask[cell_i, a, :] = cfg.COORD_SCALE
 
-        cls_mask[cell_i, a, :] = cfg.CLASS_SCALE[gt_cls[i]]  # imbalance data
-        cls_target[cell_i, a, gt_cls[i]] = 1
-
-    return bbox_target, bbox_mask, iou_target, iou_mask, cls_target, cls_mask, num_boxes
+    return num_boxes, cls_target, cls_mask, iou_target, iou_mask, bbox_target, bbox_mask
