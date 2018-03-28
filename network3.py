@@ -257,7 +257,7 @@ class Network(object):
         box_coords = clip_boxes(np.ascontiguousarray(box_coords, dtype=np.float32),
                                 cfg.INP_SIZE, cfg.INP_SIZE)
 
-    return box_coords, box_cls, box_scores
+        return box_coords, box_cls, box_scores
 
 
 if __name__ == '__main__':
