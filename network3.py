@@ -138,18 +138,18 @@ class Network(object):
             self.global_step = tf.Variable(
                 0, trainable=False, name='global_step')
 
-            learning_rate = tf.train.exponential_decay(
-                init_learning_rate, self.global_step, 12500, 0.9, staircase=True)
+            # learning_rate = tf.train.exponential_decay(
+            #     init_learning_rate, self.global_step, 12500, 0.9, staircase=True)
 
             self.optimizer = tf.train.AdamOptimizer(
-                learning_rate).minimize(total_loss, self.global_step)
+                init_learning_rate).minimize(total_loss, self.global_step)
 
             # training summaries
             tf.summary.scalar('cls_loss', cls_loss)
             tf.summary.scalar('iou_loss', iou_loss)
             tf.summary.scalar('bbox_loss', bbox_loss)
             tf.summary.scalar('total_loss', total_loss)
-            tf.summary.scalar('learning_rate', learning_rate)
+            # tf.summary.scalar('learning_rate', learning_rate)
 
             self.merged = tf.summary.merge_all()
 
@@ -181,16 +181,16 @@ class Network(object):
 
                 # only 1 image per batch
                 # keep top-n-score each block to apply nms to combined blocks
-                box_pred, cls_inds, scores = tf.py_func(proposal_layer,
-                                                        [bbox_pred, iou_pred, cls_pred,
-                                                         self.anchors[block], block_w, block_h],
-                                                        [tf.float32, tf.int8,
-                                                            tf.float32],
-                                                        name=block+'_proposal_layer')
+                box_coords, box_cls, box_scores = tf.py_func(proposal_layer,
+                                                             [bbox_pred, iou_pred, cls_pred,
+                                                              self.anchors[block], block_w, block_h],
+                                                             [tf.float32, tf.int8,
+                                                                 tf.float32],
+                                                             name=block+'_proposal_layer')
 
-                self.box_coords.append(box_pred)
-                self.box_cls.append(cls_inds)
-                self.box_scores.append(scores)
+                self.box_coords.append(box_coords)
+                self.box_cls.append(box_cls)
+                self.box_scores.append(box_scores)
 
             self.box_coords = tf.concat(self.box_coords, axis=0)
             self.box_cls = tf.concat(self.box_cls, axis=0)
@@ -235,7 +235,7 @@ class Network(object):
                                                            feed_dict={self.images_ph: image})
 
         keep = np.zeros(len(box_coords), dtype=np.int8)
-        for i in cfg.NUM_CLASSES:
+        for i in range(cfg.NUM_CLASSES):
             inds = np.where(box_cls == i)[0]
             if len(inds) == 0:
                 continue  # no i-objects in image
@@ -250,8 +250,8 @@ class Network(object):
         keep = np.where(keep > 0)[0]
 
         box_coords = box_coords[keep]
-        box_cls = (box_cls[keep]).astype(np.int8)
-        box_scores = box_scores[keep]
+        box_cls = box_cls[keep]
+        box_scores = box_scores[keep][:, 0]
 
         # clip outside-region of boxes
         box_coords = clip_boxes(np.ascontiguousarray(box_coords, dtype=np.float32),

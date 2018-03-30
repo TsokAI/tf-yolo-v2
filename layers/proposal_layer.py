@@ -46,7 +46,7 @@ def proposal_layer(bbox_pred, iou_pred, cls_pred, anchors, logitsize):
 
     box_coords = box_coords[keep]
     box_cls = (box_cls[keep]).astype(np.int8)
-    box_scores = box_scores[keep]
+    box_scores = box_scores[keep][:, 0]
 
     # clip boxes inside image
     box_coords = clip_boxes(np.ascontiguousarray(box_coords, dtype=np.float32),

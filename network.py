@@ -82,7 +82,7 @@ class Network(object):
             num_boxes, cls_target, cls_mask, iou_target, iou_mask, bbox_target, bbox_mask = tf.py_func(
                 build_targets,
                 [bbox_pred, iou_pred,
-                 self.gt_boxes_ph, self.gt_cls_ph, self.anchors, logitsize, self.warmup],
+                 self.gt_boxes_ph, self.gt_cls_ph, self.anchors, logitsize, self.warmup_ph],
                 [tf.float32] * 7,
                 name='proposal_target_layer')
 
@@ -121,7 +121,7 @@ class Network(object):
             # testing, batch_size is 1
             cls_pred = tf.nn.softmax(cls_pred)
 
-            self.box_pred, self.cls_inds, self.scores = tf.py_func(
+            self.box_coords, self.box_cls, self.box_scores = tf.py_func(
                 proposal_layer,
                 [bbox_pred[0], iou_pred[0], cls_pred[0], self.anchors, logitsize],
                 [tf.float32, tf.int8, tf.float32],
@@ -161,7 +161,11 @@ class Network(object):
     def predict(self, image):
         image = np.expand_dims(image, axis=0)  # [1, H, W, C]
 
-        box_pred, cls_inds, scores = self.sess.run([self.box_pred, self.cls_inds, self.scores],
-                                                   feed_dict={self.images_ph: image})
+        box_coords, box_cls, box_scores = self.sess.run([self.box_coords, self.box_cls, self.box_scores],
+                                                        feed_dict={self.images_ph: image})
 
-        return box_pred, cls_inds, scores
+        return box_coords, box_cls, box_scores
+
+
+if __name__ == '__main__':
+    Network(init_learning_rate=1e-3)  # training

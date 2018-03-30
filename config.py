@@ -14,14 +14,14 @@ NUM_CLASSES = len(LABEL_NAMES)
 
 INP_SIZE = 352  # rgb images
 
-NUM_ANCHORS_CELL = 3
+NUM_ANCHORS_CELL = 3  # 5 if use yolo2
 
 USE_GPU = True
 
 # training
 IOU_THRESH = 0.5  # ignored rois threshold
 
-# CLASS_SCALE = [0.165, 2.962, 2.376, 4.91]
+# CLASS_SCALE = [0.165, 2.962, 2.376, 4.91]  # ua-detrac imbalance data
 CLASS_SCALE = [1] * NUM_CLASSES
 COORD_SCALE = 1
 OBJECT_SCALE = 5

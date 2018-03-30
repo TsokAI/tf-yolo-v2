@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 import os
 import numpy as np
 import cv2
-from network import Network
+from network3 import Network
 from utils.bounding_boxes import draw_targets
 from config import INP_SIZE
 import time

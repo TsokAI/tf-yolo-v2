@@ -27,7 +27,7 @@ def proposal_layer(bbox_pred, iou_pred, cls_pred, anchors, out_w, out_h):
     keep = keep[np.argsort(-box_scores[keep, 0])[:cfg.PRE_NMS_TOP_N]]
 
     box_coords = box_coords[keep]
-    box_cls = box_cls[keep]
+    box_cls = (box_cls[keep]).astype(np.int8)
     box_scores = box_scores[keep]
 
-    return box_scores, box_cls, box_scores
+    return box_coords, box_cls, box_scores
