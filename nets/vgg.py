@@ -24,7 +24,7 @@ def forward(inputs, num_outputs, is_training=True, scope=None):
                                   [3, 3], scope='conv2')
                 net = slim.max_pool2d(net, [2, 2], scope='pool2')
 
-                net = slim.repeat(net, 3, slim.conv2d, 256,
+                net = slim.repeat(net, 2, slim.conv2d, 256,
                                   [3, 3], scope='conv3')
                 net = slim.max_pool2d(net, [2, 2], scope='pool3')
 
@@ -81,8 +81,8 @@ def preprocess(images, is_training=True):
     # images: 4d tensor [batch_size, height, width, channels]
     # rgb_means subtraction on each image
     images = tf.cast(images, tf.float32)
-    if is_training:
-        images = tf.map_fn(preprocess_for_train, images)
+    # if is_training:
+    #     images = tf.map_fn(preprocess_for_train, images)
 
     images = images - [123.68, 116.78, 103.94]
 

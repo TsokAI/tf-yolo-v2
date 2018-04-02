@@ -1,3 +1,4 @@
+# yolo3
 # compute targets for regression/classification from proposal_target_layer
 from __future__ import absolute_import, division, print_function
 import numpy as np
@@ -40,7 +41,7 @@ def proposal_target_layer(feed_data, anchors, out_w, out_h, warmup):
         bbox_target[:, :, 2:4] = 1.0
 
     box_ious = box_overlaps(np.ascontiguousarray(box_pred, dtype=np.float32),
-                            np.ascontiguousarray(gt_boxes, dtype=np.float32))
+                            np.ascontiguousarray(gt_boxes, dtype=np.float32))  # nan
 
     box_ious = np.reshape(box_ious, [hw, cfg.NUM_ANCHORS_CELL, -1])
 
@@ -48,18 +49,17 @@ def proposal_target_layer(feed_data, anchors, out_w, out_h, warmup):
     iou_mask[negative_bbox_inds] = cfg.NO_OBJECT_SCALE * \
         (0 - iou_pred[negative_bbox_inds])
 
-    xfeat = cfg.INP_SIZE / out_w
-    yfeat = cfg.INP_SIZE / out_h
     # locating gt_boxes' cells in output's scale
-    cx = (gt_boxes[:, 0] + gt_boxes[:, 2]) * 0.5 / xfeat
-    cy = (gt_boxes[:, 1] + gt_boxes[:, 3]) * 0.5 / yfeat
-    cell_inds = (np.floor(cy) * out_w + np.floor(cx)).astype(np.int16)
+    cx = (gt_boxes[:, 0] + gt_boxes[:, 2]) * 0.5 * (out_w / cfg.INP_SIZE)
+    cy = (gt_boxes[:, 1] + gt_boxes[:, 3]) * 0.5 * (out_h / cfg.INP_SIZE)
+    cell_inds = (np.floor(cy) * out_w + np.floor(cx)).astype(np.int32)
 
     # transform to bbox
+    # nan at bbox if using resnet
     box_target = np.empty_like(gt_boxes, dtype=np.float32)
-    box_target[:, 0] = cx - np.floor(cx)
+    box_target[:, 0] = cx - np.floor(cx)  # output's scale
     box_target[:, 1] = cy - np.floor(cy)
-    box_target[:, 2] = gt_boxes[:, 2] - gt_boxes[:, 0]
+    box_target[:, 2] = gt_boxes[:, 2] - gt_boxes[:, 0]  # input's scale
     box_target[:, 3] = gt_boxes[:, 3] - gt_boxes[:, 1]
 
     # select best anchor as positive bounding box

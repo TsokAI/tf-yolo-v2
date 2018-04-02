@@ -1,3 +1,4 @@
+# yolo2
 # compute targets for regression/classification from proposal_target_layer
 from __future__ import absolute_import, division, print_function
 import numpy as np
@@ -38,13 +39,13 @@ def proposal_target_layer(feed_data, anchors, logitsize, warmup):
     box_pred = np.reshape(box_pred, [-1, 4])
 
     box_ious = box_overlaps(np.ascontiguousarray(box_pred, dtype=np.float32),
-                            np.ascontiguousarray(gt_boxes, dtype=np.float32))
+                            np.ascontiguousarray(gt_boxes, dtype=np.float32))  # nan
 
     box_ious = np.reshape(box_ious, [hw, num_anchors, -1])
 
     # select boxes with best iou smaller than thresh to assign negative
     neg_box_inds = np.where(np.max(box_ious, axis=2) < cfg.IOU_THRESH)
-    iou_mask[neg_box_inds] = cfg.NO_OBJECT_SCALE * (0 - iou_pred[neg_box_inds])
+    iou_mask[neg_box_inds] = cfg.NO_OBJECT_SCALE
 
     # locate groundtruth cells, compute bbox target
     feat_stride = cfg.INP_SIZE / logitsize
@@ -77,13 +78,11 @@ def proposal_target_layer(feed_data, anchors, logitsize, warmup):
         a = anchor_inds[i]
 
         cls_target[cell_i, a, gt_cls[i]] = 1
-        cls_mask[cell_i, a] = cfg.CLASS_SCALE[gt_cls[i]]  # imbalance data
+        cls_mask[cell_i, a] = cfg.CLASS_SCALE[gt_cls[i]]  # weight of class
 
-        # rescore iou
-        iou_truth = box_ious[cell_i, a, i]
-        iou_target[cell_i, a, :] = iou_truth
-        iou_mask[cell_i, a, :] = cfg.OBJECT_SCALE * \
-            (iou_truth - iou_pred[cell_i, a, :])  # ?(1-iou_pred)
+        iou_target[cell_i, a, :] = 1
+        # iou_target[cell_i, a, :] = box_ious[cell_i, a, i]  # rescore iou target
+        iou_mask[cell_i, a, :] = cfg.OBJECT_SCALE
 
         box_target[i, 2:4] /= anchors[a]
         bbox_target[cell_i, a, :] = box_target[i]

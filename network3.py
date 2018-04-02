@@ -46,12 +46,12 @@ class Network(object):
 
         # anchors pyramid, from yolo3 paper
         self.anchors = {
-            'block4': tf.Variable([[116, 90], [156, 198], [373, 326]],
-                                  trainable=False, name='anchor_block4', dtype=tf.float32),
+            'block2': tf.Variable([[10, 13], [16, 30], [33, 23]],
+                                  trainable=False, name='anchor_block2', dtype=tf.float32),
             'block3': tf.Variable([[30, 61], [62, 45], [59, 119]],
                                   trainable=False, name='anchor_block3', dtype=tf.float32),
-            'block2': tf.Variable([[10, 13], [16, 30], [33, 23]],
-                                  trainable=False, name='anchor_block2', dtype=tf.float32)
+            'block4': tf.Variable([[116, 90], [156, 198], [373, 326]],
+                                  trainable=False, name='anchor_block4', dtype=tf.float32)
         }
 
         # color distortion for traning
@@ -76,7 +76,7 @@ class Network(object):
             bbox_masks = []
             total_boxes = 0
 
-            for block in end_points:
+            for block in ['block2', 'block3', 'block4']:
                 block_logits = end_points[block]
                 # NHWC tensor, different in each block
                 block_h, block_w = block_logits.get_shape()[1:3]
@@ -97,7 +97,6 @@ class Network(object):
                 cls_pred = block_logits[:, :, :, 5:]
                 cls_predictions.append(cls_pred)
 
-                # TODO: faster here!!!
                 num_boxes, cls_target, cls_mask, iou_target, iou_mask, bbox_target, bbox_mask = tf.py_func(build_targets,
                                                                                                            [bbox_pred, iou_pred,
                                                                                                             self.gt_boxes_ph, self.gt_cls_ph,
@@ -105,7 +104,7 @@ class Network(object):
                                                                                                                 block], block_w, block_h,
                                                                                                                self.warmup_ph],
                                                                                                            [tf.float32] * 7,
-                                                                                                           name=block+'_proposal_target_layer')
+                                                                                                           name='proposal_target_layer')
 
                 total_boxes += num_boxes
                 cls_targets.append(cls_target)
@@ -186,7 +185,7 @@ class Network(object):
                                                               self.anchors[block], block_w, block_h],
                                                              [tf.float32, tf.int8,
                                                                  tf.float32],
-                                                             name=block+'_proposal_layer')
+                                                             name='proposal_layer')
 
                 self.box_coords.append(box_coords)
                 self.box_cls.append(box_cls)

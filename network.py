@@ -99,18 +99,18 @@ class Network(object):
             self.global_step = tf.Variable(
                 0, trainable=False, name='global_step')
 
-            learning_rate = tf.train.exponential_decay(
-                init_learning_rate, self.global_step, 25000, 0.9, staircase=True)
+            # learning_rate = tf.train.exponential_decay(
+            #     init_learning_rate, self.global_step, 25000, 0.9, staircase=True)
 
             self.optimizer = tf.train.AdamOptimizer(
-                learning_rate).minimize(total_loss, self.global_step)
+                init_learning_rate).minimize(total_loss, self.global_step)
 
             # training summaries
             tf.summary.scalar('cls_loss', cls_loss)
             tf.summary.scalar('iou_loss', iou_loss)
             tf.summary.scalar('bbox_loss', bbox_loss)
             tf.summary.scalar('total_loss', total_loss)
-            tf.summary.scalar('learning_rate', learning_rate)
+            # tf.summary.scalar('learning_rate', learning_rate)
 
             self.merged = tf.summary.merge_all()
 

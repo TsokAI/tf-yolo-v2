@@ -26,12 +26,12 @@ def forward(inputs, num_outputs, is_training=True, scope=None):
                     net = conv2d_same(inputs, 64, 7, stride=2, scope='conv1')
                     net = slim.max_pool2d(net, [3, 3], stride=2, scope='pool1')
 
-                # residual blocks
+                # residual blocks, *_aux is preact in last resnet_block
                 net, _ = resnet_v2_block(
                     net, base_depth=64, num_units=3, stride=2, scope='block1')
 
                 net, block2_aux = resnet_v2_block(
-                    net, base_depth=128, num_units=4, stride=2, scope='block2')  # reduced
+                    net, base_depth=128, num_units=4, stride=2, scope='block2')
 
                 net, block3_aux = resnet_v2_block(
                     net, base_depth=256, num_units=3, stride=2, scope='block3')  # reduced
@@ -120,8 +120,8 @@ def preprocess(images, is_training=True):
     # rescale images to [-1, 1]
     # resnet_v2 using inception preprocess
     images = tf.image.convert_image_dtype(images, dtype=tf.float32)
-    if is_training:
-        images = tf.map_fn(preprocess_for_train, images)
+    # if is_training:
+    #     images = tf.map_fn(preprocess_for_train, images)
 
     images = tf.multiply(tf.subtract(images, 0.5), 2.0)
 

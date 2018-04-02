@@ -3,7 +3,7 @@ import os
 import time
 from datetime import timedelta
 from imdb import Imdb
-from network3 import Network
+from network import Network
 
 data_dir = os.path.join(os.getcwd(), 'data')
 anno_dir = os.path.join(data_dir, 'annotation')
@@ -12,8 +12,8 @@ images_dir = os.path.join(data_dir, 'images')
 train_params = {
     'epochs': 200,
     'warmup_epochs': 10,
-    'batch_size': 16,
-    'lr': 1e-6
+    'batch_size': 12,
+    'lr': 1e-5
 }
 
 imdb = Imdb(anno_dir, images_dir,
@@ -25,16 +25,16 @@ net = Network(is_training=True,
 print('start training')
 
 # warmup epochs
-# for epoch in range(train_params['warmup_epochs']):
-#     epoch_t = time.time()
+for epoch in range(train_params['warmup_epochs']):
+    epoch_t = time.time()
 
-#     for images, gt_boxes, gt_cls in imdb.next_batch():
-#         net.fit(images, gt_boxes, gt_cls, warmup=True)
+    for images, gt_boxes, gt_cls in imdb.next_batch():
+        net.fit(images, gt_boxes, gt_cls, warmup=True)
 
-#     print('epoch: {0} - time: {1}'.format(epoch,
-#                                           str(timedelta(seconds=time.time() - epoch_t))))
+    print('epoch: {0} - time: {1}'.format(epoch,
+                                          str(timedelta(seconds=time.time() - epoch_t))))
 
-# net.save_ckpt()
+net.save_ckpt()
 
 # training epochs
 for epoch in range(1, train_params['epochs'] + 1):
