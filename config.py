@@ -12,14 +12,14 @@ LABEL_NAMES = ['car', 'bus', 'van', 'others']
 
 NUM_CLASSES = len(LABEL_NAMES)
 
-INP_SIZE = 400  # rgb images
+INP_SIZE = 400  # rgb images, 416 for yolo3
 
 NUM_ANCHORS_CELL = 5  # 5 if using yolo2, 3 if using yolo3
 
 USE_GPU = True
 
 # training
-IOU_THRESH = 0.5  # ignored rois threshold, 0.6 if using yolo2
+IOU_THRESH = 0.5  # ignored rois threshold
 
 # CLASS_SCALE = [0.165, 2.962, 2.376, 4.91]  # ua-detrac imbalance data
 CLASS_SCALE = [1] * NUM_CLASSES

@@ -160,7 +160,7 @@ class Network(object):
             self.box_cls = []
             self.box_scores = []
 
-            for block in end_points:
+            for block in ['block2', 'block3', 'block4']:
                 block_logits = end_points[block]
                 # NHWC tensor, different in each block
                 block_h, block_w = block_logits.get_shape()[1:3]

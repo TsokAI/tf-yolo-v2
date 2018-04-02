@@ -46,8 +46,7 @@ def proposal_target_layer(feed_data, anchors, out_w, out_h, warmup):
     box_ious = np.reshape(box_ious, [hw, cfg.NUM_ANCHORS_CELL, -1])
 
     negative_bbox_inds = np.where(np.max(box_ious, axis=2) < cfg.IOU_THRESH)
-    iou_mask[negative_bbox_inds] = cfg.NO_OBJECT_SCALE * \
-        (0 - iou_pred[negative_bbox_inds])
+    iou_mask[negative_bbox_inds] = cfg.NO_OBJECT_SCALE
 
     # locating gt_boxes' cells in output's scale
     cx = (gt_boxes[:, 0] + gt_boxes[:, 2]) * 0.5 * (out_w / cfg.INP_SIZE)
@@ -79,7 +78,7 @@ def proposal_target_layer(feed_data, anchors, out_w, out_h, warmup):
         cls_mask[ci, a] = cfg.CLASS_SCALE[gt_cls[i]]  # weight of class
 
         iou_target[ci, a, :] = 1
-        iou_mask[ci, a, :] = cfg.OBJECT_SCALE * (1 - iou_pred[ci, a, :])
+        iou_mask[ci, a, :] = cfg.OBJECT_SCALE
 
         box_target[i, 2:4] /= anchors[a]
         bbox_target[ci, a, :] = box_target[i]
